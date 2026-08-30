@@ -1,0 +1,6 @@
+{
+  "name": "FocusTrack",
+  "description": "Radical Discipline habit tracking and performance analytics web application with architectural noir aesthetic.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
