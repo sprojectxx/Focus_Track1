@@ -260,11 +260,11 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
     <div className="fixed inset-0 z-50 bg-[#0a0a0a] text-slate-100 flex flex-col justify-between p-4 sm:p-6 md:p-10 font-sans overflow-y-auto">
       {/* Mobile-Friendly Fixed Top Bar */}
       <div className="max-w-2xl mx-auto w-full flex items-center justify-between pt-2 pb-6 border-b border-[#222]">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-            <Sparkles className="w-4 h-4 text-emerald-400" />
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center p-1.5 shrink-0">
+            <img src="/logo.png" alt="FocusTrack Emblem" className="w-full h-full object-contain invert" />
           </div>
-          <span className="font-geist text-lg font-bold tracking-tight uppercase text-white">
+          <span className="font-geist text-base sm:text-lg font-bold tracking-tight uppercase text-white truncate">
             OPERATOR INITIALIZATION
           </span>
         </div>

@@ -24,12 +24,10 @@ export const Sidebar: React.FC = () => {
   return (
     <aside className="fixed left-0 top-0 h-full w-[64px] lg:w-[240px] bg-[#0e0e0e] border-r border-[#444748]/50 z-50 transition-all duration-300 ease-in-out flex flex-col hidden md:flex">
       {/* Brand Header */}
-      <div className="h-16 flex items-center justify-center lg:justify-start px-4 border-b border-[#1f1f1f]">
+      <div className="h-16 flex items-center justify-center lg:justify-start px-4 gap-3 border-b border-[#1f1f1f]">
+        <img src="/logo.png" alt="FocusTrack Emblem" className="w-7 h-7 object-contain invert shrink-0" />
         <span className="font-geist text-2xl font-bold tracking-tighter text-white hidden lg:block">
           FocusTrack
-        </span>
-        <span className="font-geist text-2xl font-bold tracking-tighter text-white block lg:hidden text-center w-full">
-          F
         </span>
       </div>
 

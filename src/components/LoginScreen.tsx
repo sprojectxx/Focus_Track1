@@ -62,7 +62,8 @@ export const LoginScreen: React.FC = () => {
         
         {/* Brand Header */}
         <div className="flex flex-col items-center text-center mb-8">
-          <div className="flex items-center gap-2 mb-3">
+          <img src="/logo.png" alt="FocusTrack Emblem" className="w-12 h-12 object-contain invert mb-3 drop-shadow-md" />
+          <div className="flex items-center gap-2 mb-2">
             <span className="font-geist text-3xl font-extrabold tracking-tighter text-white uppercase">
               FocusTrack
             </span>

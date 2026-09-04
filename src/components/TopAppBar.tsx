@@ -27,14 +27,15 @@ export const TopAppBar: React.FC = () => {
     <>
       {/* Mobile Header */}
       <header className="md:hidden flex justify-between items-center w-full h-16 px-4 border-b border-[#444748]/40 bg-[#131313] fixed top-0 left-0 z-40">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
+          <img src="/logo.png" alt="FocusTrack Emblem" className="w-6 h-6 object-contain invert" />
           <span className="font-geist text-xl font-bold tracking-tighter text-white">FocusTrack</span>
         </div>
         <div className="flex items-center space-x-2">
           <a
             href="/downloads/FocusTrack-Android.apk"
             download="FocusTrack-Android.apk"
-            className="flex items-center gap-1 px-2 py-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 rounded font-technical text-[10px] uppercase tracking-wider transition-colors cursor-pointer"
+            className="flex items-center gap-1 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 rounded font-technical text-[10px] uppercase tracking-wider transition-colors cursor-pointer"
             title="Download Android App (.apk)"
           >
             <span className="material-symbols-outlined text-[16px]">android</span>
@@ -59,7 +60,8 @@ export const TopAppBar: React.FC = () => {
 
       {/* Desktop Header */}
       <header className="hidden md:flex justify-between items-center w-full h-16 px-8 border-b border-[#444748]/40 bg-[#131313] sticky top-0 z-40">
-        <div className="flex items-center">
+        <div className="flex items-center gap-2.5">
+          <img src="/logo.png" alt="FocusTrack Emblem" className="w-5 h-5 object-contain invert" />
           <span className="font-technical text-[11px] text-[#8e9192] uppercase tracking-[0.2em]">
             {getPageHeader()}
           </span>

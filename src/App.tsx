@@ -83,7 +83,7 @@ const AppContent: React.FC = () => {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col md:pl-[64px] lg:pl-[240px] w-full min-h-screen transition-all duration-300">
         <TopAppBar />
-        <main className="flex-1 flex flex-col pt-16 md:pt-0">
+        <main className="flex-1 flex flex-col pt-16 pb-20 md:pt-0 md:pb-0">
           {renderMainView()}
         </main>
       </div>
