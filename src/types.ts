@@ -36,3 +36,4 @@ export interface UserProfile {
   disciplineScore: number;
   creed: string;
 }
+

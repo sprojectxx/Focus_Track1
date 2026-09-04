@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Focus Track</string>
+    <string name="title_activity_main">Focus Track</string>
+    <string name="package_name">com.focustrack.app</string>
+    <string name="custom_url_scheme">com.focustrack.app</string>
+</resources>

@@ -30,7 +30,16 @@ export const TopAppBar: React.FC = () => {
         <div className="flex items-center gap-2">
           <span className="font-geist text-xl font-bold tracking-tighter text-white">FocusTrack</span>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2">
+          <a
+            href="/downloads/FocusTrack-Android.apk"
+            download="FocusTrack-Android.apk"
+            className="flex items-center gap-1 px-2 py-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 rounded font-technical text-[10px] uppercase tracking-wider transition-colors cursor-pointer"
+            title="Download Android App (.apk)"
+          >
+            <span className="material-symbols-outlined text-[16px]">android</span>
+            <span>APK</span>
+          </a>
           <button
             onClick={() => setIsNotificationOpen(true)}
             className="text-[#c4c7c8] hover:text-white transition-colors cursor-pointer p-1.5"
@@ -55,7 +64,16 @@ export const TopAppBar: React.FC = () => {
             {getPageHeader()}
           </span>
         </div>
-        <div className="flex items-center space-x-5">
+        <div className="flex items-center space-x-4">
+          <a
+            href="/downloads/FocusTrack-Android.apk"
+            download="FocusTrack-Android.apk"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 rounded font-technical text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer"
+            title="Download Android App (.apk)"
+          >
+            <span className="material-symbols-outlined text-[16px]">android</span>
+            <span>Download Android App (.apk)</span>
+          </a>
           <button
             onClick={() => setIsNotificationOpen(true)}
             className="text-[#c4c7c8] hover:text-white transition-colors cursor-pointer p-1.5 relative group"

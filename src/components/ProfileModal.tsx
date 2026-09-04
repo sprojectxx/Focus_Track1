@@ -1,10 +1,21 @@
 import React from 'react';
 import { useHabits } from '../context/HabitContext';
+import { useAuth } from '../context/AuthContext';
 
 export const ProfileModal: React.FC = () => {
   const { isProfileModalOpen, setIsProfileModalOpen, userProfile, stats, setCurrentTab } = useHabits();
+  const { signOut, user } = useAuth();
 
   if (!isProfileModalOpen) return null;
+
+  const handleSignOut = async () => {
+    setIsProfileModalOpen(false);
+    await signOut();
+  };
+
+  const displayName = user?.user_metadata?.full_name || userProfile.name;
+  const displayAvatar = user?.user_metadata?.avatar_url || userProfile.avatarUrl;
+  const displayEmail = user?.email || '';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -31,14 +42,19 @@ export const ProfileModal: React.FC = () => {
         <div className="flex flex-col items-center text-center mb-6">
           <div className="w-24 h-24 rounded-full bg-[#1b1b1b] border-2 border-white overflow-hidden mb-4 shadow-xl">
             <img
-              src={userProfile.avatarUrl}
-              alt={userProfile.name}
+              src={displayAvatar}
+              alt={displayName}
               className="w-full h-full object-cover grayscale contrast-125"
             />
           </div>
           <h3 className="font-geist text-xl font-bold text-white uppercase tracking-tight">
-            {userProfile.name}
+            {displayName}
           </h3>
+          {displayEmail && (
+            <p className="text-xs text-emerald-400 font-mono tracking-wide mt-0.5">
+              {displayEmail}
+            </p>
+          )}
           <p className="text-xs text-[#8e9192] font-technical uppercase tracking-widest mt-0.5">
             {userProfile.title}
           </p>
@@ -77,8 +93,15 @@ export const ProfileModal: React.FC = () => {
           >
             System Settings
           </button>
+          <button
+            onClick={handleSignOut}
+            className="w-full py-2.5 bg-red-950/40 text-red-400 border border-red-900/50 font-technical text-xs font-bold uppercase tracking-widest rounded hover:bg-red-900/50 transition-colors cursor-pointer"
+          >
+            Sign Out
+          </button>
         </div>
       </div>
     </div>
   );
 };
+

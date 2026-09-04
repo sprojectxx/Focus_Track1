@@ -1,6 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useHabits } from '../context/HabitContext';
 import { HabitVisual } from './HabitVisual';
+import { getTimeBasedGreeting, getRandomQuote, MotivationalQuote } from '../data/motivationalQuotes';
+import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 
 export const DashboardView: React.FC = () => {
   const {
@@ -17,6 +19,35 @@ export const DashboardView: React.FC = () => {
     setIsCreateModalOpen,
   } = useHabits();
 
+  const [greetingInfo, setGreetingInfo] = useState(getTimeBasedGreeting());
+  const [currentQuote, setCurrentQuote] = useState<MotivationalQuote>(getRandomQuote());
+
+  useEffect(() => {
+    // Update time-based greeting
+    setGreetingInfo(getTimeBasedGreeting());
+
+    // Fetch quote from Supabase or random fallback
+    const fetchQuote = async () => {
+      if (isSupabaseConfigured) {
+        try {
+          const { data } = await supabase.from('motivational_quotes').select('*');
+          if (data && data.length > 0) {
+            const random = data[Math.floor(Math.random() * data.length)];
+            setCurrentQuote({
+              id: random.id,
+              quote: random.quote,
+              author: random.author,
+              translation: random.translation
+            });
+          }
+        } catch {
+          // fallback
+        }
+      }
+    };
+    fetchQuote();
+  }, []);
+
   const monthNames = [
     'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
     'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'
@@ -25,12 +56,18 @@ export const DashboardView: React.FC = () => {
   const daysInMonth = new Date(viewingYear, viewingMonth, 0).getDate();
   const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
-  // Today reference (Default context is August 30, 2026)
-  const isCurrentViewingMonth = viewingYear === 2026 && viewingMonth === 8;
-  const todayDayNum = isCurrentViewingMonth ? 30 : (viewingMonth === new Date().getMonth() + 1 && viewingYear === new Date().getFullYear() ? new Date().getDate() : -1);
+  // Today reference (Real-time current date)
+  const realNow = new Date();
+  const realYear = realNow.getFullYear();
+  const realMonth = realNow.getMonth() + 1;
+  const realDay = realNow.getDate();
+
+  const isCurrentViewingMonth = viewingYear === realYear && viewingMonth === realMonth;
+  const todayDayNum = isCurrentViewingMonth ? realDay : -1;
 
   // Calculate Today's completion count
-  const todayKey = isCurrentViewingMonth ? '2026-08-30' : `${viewingYear}-${viewingMonth.toString().padStart(2, '0')}-${todayDayNum > 0 ? todayDayNum.toString().padStart(2, '0') : '01'}`;
+  const todayKey = `${realYear}-${realMonth.toString().padStart(2, '0')}-${realDay.toString().padStart(2, '0')}`;
+
   
   const todayCompletedCount = useMemo(() => {
     return activeHabits.filter(h => !!h.history[todayKey]).length;
@@ -50,15 +87,26 @@ export const DashboardView: React.FC = () => {
 
   return (
     <div className="flex-1 p-4 md:p-8 lg:p-12 max-w-[1500px] mx-auto w-full flex flex-col pb-24">
-      {/* Hero Motto Header */}
+      {/* Time-Based Greeting & Hero Motto Header */}
       <section className="flex flex-col items-center justify-center py-8 md:py-12 border-b border-[#222] text-center mb-6">
-        <h1 className="font-geist text-2xl sm:text-4xl md:text-5xl lg:text-[60px] font-extrabold text-white tracking-tighter uppercase leading-[1.05] max-w-4xl px-4">
-          DISCIPLINE IS BUILT ONE DAY AT A TIME.
+        {/* Dynamic Time-Based Greeting Badge */}
+        <div className="mb-3 px-3 py-1 bg-white/5 border border-white/10 rounded text-[11px] font-technical text-emerald-400 uppercase tracking-[0.25em] font-bold">
+          {greetingInfo.greeting}
+        </div>
+
+        {/* Dynamic Quote Headline */}
+        <h1 className="font-geist text-2xl sm:text-4xl md:text-5xl lg:text-[54px] font-extrabold text-white tracking-tighter uppercase leading-[1.08] max-w-5xl px-4">
+          "{currentQuote.quote}"
         </h1>
+
         <p className="mt-3 md:mt-4 font-technical text-[11px] text-[#8e9192] uppercase tracking-[0.25em]">
-          FocusTrack • Daily Execution Matrix
+          — {currentQuote.author} {currentQuote.translation ? `• ${currentQuote.translation}` : ''}
+        </p>
+        <p className="mt-1 font-technical text-[10px] text-emerald-400/80 uppercase tracking-widest">
+          {greetingInfo.subtext}
         </p>
       </section>
+
 
       {/* Month Header & Quick Action Row */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-6 gap-5">

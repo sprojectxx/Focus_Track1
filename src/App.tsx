@@ -1,5 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { HabitProvider, useHabits } from './context/HabitContext';
+import { LoginScreen } from './components/LoginScreen';
+import { OnboardingFlow } from './components/OnboardingFlow';
 import { Sidebar } from './components/Sidebar';
 import { TopAppBar } from './components/TopAppBar';
 import { BottomNavBar } from './components/BottomNavBar';
@@ -13,9 +16,45 @@ import { SettingsView } from './components/SettingsView';
 import { CreateHabitModal } from './components/CreateHabitModal';
 import { NotificationsModal } from './components/NotificationsModal';
 import { ProfileModal } from './components/ProfileModal';
+import { initPushNotifications } from './lib/notifications';
 
 const AppContent: React.FC = () => {
   const { currentTab, selectedHabitId } = useHabits();
+  const { user, loading } = useAuth();
+  const [isOnboarded, setIsOnboarded] = useState<boolean>(true);
+
+  useEffect(() => {
+    if (user?.id) {
+      // Initialize FCM & Push Notifications for Android/Native
+      initPushNotifications(user.id);
+
+      // Check onboarding state
+      const onboarded = localStorage.getItem(`focustrack_onboarded_${user.id}`);
+      if (!onboarded) {
+        setIsOnboarded(false);
+      } else {
+        setIsOnboarded(true);
+      }
+    }
+  }, [user?.id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#131313] flex flex-col justify-center items-center text-slate-300">
+        <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-xs text-slate-400 font-medium">Loading session...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginScreen />;
+  }
+
+  if (!isOnboarded) {
+    return <OnboardingFlow onComplete={() => setIsOnboarded(true)} />;
+  }
+
 
   const renderMainView = () => {
     switch (currentTab) {
@@ -62,10 +101,13 @@ const AppContent: React.FC = () => {
 
 export function App() {
   return (
-    <HabitProvider>
-      <AppContent />
-    </HabitProvider>
+    <AuthProvider>
+      <HabitProvider>
+        <AppContent />
+      </HabitProvider>
+    </AuthProvider>
   );
 }
 
 export default App;
+

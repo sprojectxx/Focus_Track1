@@ -1,16 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useHabits } from '../context/HabitContext';
 
 export const AnalyticsView: React.FC = () => {
   const { stats, habits } = useHabits();
-  const [selectedYear, setSelectedYear] = useState<number>(2024);
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [hoveredCell, setHoveredCell] = useState<{ date: string; count: number } | null>(null);
 
-  // Generate 52 weeks x 7 days heatmap for selectedYear
+  // Compute total completed habit repetitions across all active/archived habits
+  const totalRepetitions = useMemo(() => {
+    let total = 0;
+    habits.forEach(h => {
+      Object.values(h.history).forEach(val => {
+        if (val) total++;
+      });
+    });
+    return total;
+  }, [habits]);
+
+  // Compute overall consistency rate
+  const overallConsistencyRate = useMemo(() => {
+    if (habits.length === 0) return 0;
+    return stats.overallCompletion || 0;
+  }, [habits, stats.overallCompletion]);
+
+  // Compute longest streak across all habits
+  const longestStreak = useMemo(() => {
+    return stats.bestStreak || 0;
+  }, [stats.bestStreak]);
+
+  // Compute current streak
+  const currentRunStreak = useMemo(() => {
+    return stats.currentStreak || 0;
+  }, [stats.currentStreak]);
+
+  // Generate 52 weeks x 7 days heatmap for selectedYear dynamically
   const generateHeatmapWeeks = () => {
     const weeks: { dateStr: string; dayOfWeek: number; count: number; level: number }[][] = [];
     const startDate = new Date(selectedYear, 0, 1);
-    // Align start to the first Monday on or before Jan 1
     const dayOfWeek = (startDate.getDay() + 6) % 7; // 0=Mon, 6=Sun
     const current = new Date(startDate);
     current.setDate(current.getDate() - dayOfWeek);
@@ -24,22 +50,22 @@ export const AnalyticsView: React.FC = () => {
         const key = `${year}-${monthStr}-${dayStr}`;
 
         // Count how many habits completed on this day
-        let completedCount不易 = 0;
+        let completedCount = 0;
         habits.forEach(h => {
-          if (h.history[key]) completedCount不易++;
+          if (h.history[key]) completedCount++;
         });
 
         // Determine brightness level (0 to 4)
         let level = 0;
-        if (completedCount不易 >= 4) level = 4;
-        else if (completedCount不易 === 3) level = 3;
-        else if (completedCount不易 === 2) level = 2;
-        else if (completedCount不易 === 1) level = 1;
+        if (completedCount >= 4) level = 4;
+        else if (completedCount === 3) level = 3;
+        else if (completedCount === 2) level = 2;
+        else if (completedCount === 1) level = 1;
 
         week.push({
           dateStr: key,
           dayOfWeek: d,
-          count: completedCount不易,
+          count: completedCount,
           level,
         });
 
@@ -53,21 +79,28 @@ export const AnalyticsView: React.FC = () => {
 
   const heatmapWeeks = generateHeatmapWeeks();
 
-  // Monthly consistency rates for selectedYear
-  const monthlyRates = [
-    { month: 'Jan', rate: 78 },
-    { month: 'Feb', rate: 82 },
-    { month: 'Mar', rate: 85 },
-    { month: 'Apr', rate: 80 },
-    { month: 'May', rate: 91 },
-    { month: 'Jun', rate: 95, isPeak: true },
-    { month: 'Jul', rate: 88 },
-    { month: 'Aug', rate: 87 },
-    { month: 'Sep', rate: 84 },
-    { month: 'Oct', rate: 89 },
-    { month: 'Nov', rate: 83 },
-    { month: 'Dec', rate: 90 },
-  ];
+  // Dynamically calculate monthly consistency rates for selectedYear
+  const monthlyRates = useMemo(() => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return months.map((monthName, monthIndex) => {
+      const daysInMonth = new Date(selectedYear, monthIndex + 1, 0).getDate();
+      let monthCompleted = 0;
+      let monthTotalPossible = habits.length * daysInMonth;
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateKey = `${selectedYear}-${(monthIndex + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+        habits.forEach(h => {
+          if (h.history[dateKey]) monthCompleted++;
+        });
+      }
+
+      const rate = monthTotalPossible > 0 ? Math.round((monthCompleted / monthTotalPossible) * 100) : 0;
+      return { month: monthName, rate };
+    });
+  }, [habits, selectedYear]);
+
+  // Identify peak month
+  const maxMonthlyRate = Math.max(...monthlyRates.map(m => m.rate), 0);
 
   return (
     <div className="flex-1 p-4 md:p-8 lg:p-10 max-w-7xl mx-auto w-full flex flex-col pb-24">
@@ -77,7 +110,7 @@ export const AnalyticsView: React.FC = () => {
           PERFORMANCE
         </h2>
         <p className="text-xs text-[#a3a3a3] font-technical uppercase tracking-widest mt-1">
-          A clear overview of your consistency and progress.
+          Real-time metrics calculated from your daily executions.
         </p>
       </div>
 
@@ -91,17 +124,16 @@ export const AnalyticsView: React.FC = () => {
             </div>
             <div className="flex items-baseline gap-2">
               <span className="text-4xl sm:text-5xl font-extrabold text-white tracking-tighter font-geist">
-                87%
-              </span>
-              <span className="text-xs font-technical font-bold text-white flex items-center gap-0.5">
-                <span className="material-symbols-outlined text-[14px]">arrow_upward</span>
-                +2.4%
+                {overallConsistencyRate}%
               </span>
             </div>
-            <p className="text-[11px] text-[#737373] mt-1 font-technical">vs last month</p>
+            <p className="text-[11px] text-[#737373] mt-1 font-technical">Active habits average</p>
           </div>
           <div className="w-full bg-[#262626] h-1.5 rounded-full overflow-hidden mt-6">
-            <div className="bg-white h-full rounded-full transition-all duration-500" style={{ width: '87%' }}></div>
+            <div 
+              className="bg-white h-full rounded-full transition-all duration-500" 
+              style={{ width: `${Math.min(overallConsistencyRate, 100)}%` }}
+            />
           </div>
         </div>
 
@@ -117,7 +149,7 @@ export const AnalyticsView: React.FC = () => {
               </span>
             </div>
             <div className="text-4xl sm:text-5xl font-extrabold text-white tracking-tighter font-geist">
-              {stats.totalCompletedSessions.toLocaleString()}
+              {totalRepetitions.toLocaleString()}
             </div>
             <p className="text-[11px] text-[#737373] mt-1 font-technical">Total habit repetitions</p>
           </div>
@@ -139,100 +171,76 @@ export const AnalyticsView: React.FC = () => {
             </div>
             <div className="flex items-baseline gap-2">
               <span className="text-4xl sm:text-5xl font-extrabold text-white tracking-tighter font-geist">
-                42
+                {longestStreak}
               </span>
               <span className="text-xs font-technical text-[#a3a3a3] uppercase tracking-wider">
                 Days
               </span>
             </div>
-            <p className="text-[11px] text-[#737373] mt-1 font-technical">Achieved on Deep Work</p>
+            <p className="text-[11px] text-[#737373] mt-1 font-technical">Consecutive execution record</p>
           </div>
           <div className="flex items-center gap-1.5 mt-4">
-            <span className="w-2 h-2 rounded-full bg-white animate-ping"></span>
-            <span className="font-technical text-[10px] text-white uppercase tracking-widest">
-              CURRENT RUN: 12 DAYS
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span className="font-technical text-[10px] text-emerald-400 uppercase tracking-wider">
+              CURRENT RUN: {currentRunStreak} DAYS
             </span>
           </div>
         </div>
       </div>
 
-      {/* Yearly Consistency Heatmap */}
-      <div className="bg-[#121212] border border-[#262626] p-6 rounded mb-8 shadow-2xl">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
-          <div className="flex items-center gap-3">
-            <h3 className="font-technical text-xs font-bold text-white uppercase tracking-widest">
-              Consistency Heatmap ({selectedYear})
-            </h3>
-            {hoveredCell && (
-              <span className="text-xs font-technical text-[#a3a3a3] bg-[#1a1a1a] px-2 py-0.5 rounded border border-[#333]">
-                {hoveredCell.date}: {hoveredCell.count} completed
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-4 text-xs font-technical text-[#a3a3a3]">
-            <div className="flex items-center gap-1.5">
-              <span>Less</span>
-              <div className="flex gap-1">
-                <div className="w-2.5 h-2.5 rounded-xs bg-[#1a1a1a] border border-[#262626]"></div>
-                <div className="w-2.5 h-2.5 rounded-xs bg-[#404040]"></div>
-                <div className="w-2.5 h-2.5 rounded-xs bg-[#737373]"></div>
-                <div className="w-2.5 h-2.5 rounded-xs bg-[#a3a3a3]"></div>
-                <div className="w-2.5 h-2.5 rounded-xs bg-white"></div>
-              </div>
-              <span>More</span>
-            </div>
+      {/* Heatmap Section */}
+      <div className="bg-[#121212] border border-[#262626] p-6 rounded mb-8">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="font-technical text-xs font-bold text-white uppercase tracking-widest">
+            CONSISTENCY HEATMAP ({selectedYear})
+          </h3>
+          <div className="flex items-center gap-1 text-[10px] font-technical text-[#737373]">
+            <span>Less</span>
+            <span className="w-2.5 h-2.5 bg-[#1a1a1a] border border-[#262626] rounded-xs"></span>
+            <span className="w-2.5 h-2.5 bg-[#333] rounded-xs"></span>
+            <span className="w-2.5 h-2.5 bg-[#666] rounded-xs"></span>
+            <span className="w-2.5 h-2.5 bg-[#999] rounded-xs"></span>
+            <span className="w-2.5 h-2.5 bg-white rounded-xs"></span>
+            <span>More</span>
           </div>
         </div>
 
-        {/* Month Labels */}
-        <div className="overflow-x-auto custom-scrollbar pb-2">
-          <div className="min-w-[700px]">
-            <div className="flex text-[10px] font-technical text-[#737373] uppercase mb-2 pl-7 justify-between pr-2">
-              <span>Jan</span>
-              <span>Feb</span>
-              <span>Mar</span>
-              <span>Apr</span>
-              <span>May</span>
-              <span>Jun</span>
-              <span>Jul</span>
-              <span>Aug</span>
-              <span>Sep</span>
-              <span>Oct</span>
-              <span>Nov</span>
-              <span>Dec</span>
+        {/* Heatmap Grid */}
+        <div className="overflow-x-auto pb-2">
+          <div className="flex flex-col gap-1 min-w-[750px]">
+            {/* Months Header Row */}
+            <div className="flex text-[9px] font-technical text-[#737373] pl-6 mb-1">
+              {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((m) => (
+                <div key={m} className="flex-1 text-center">
+                  {m}
+                </div>
+              ))}
             </div>
 
-            {/* Grid with Mon/Wed/Fri Labels */}
-            <div className="flex gap-1.5">
-              <div className="flex flex-col justify-between text-[9px] font-technical text-[#737373] pr-2 py-0.5">
+            {/* Grid Days */}
+            <div className="flex gap-1">
+              <div className="flex flex-col justify-between text-[9px] font-technical text-[#737373] pr-2 shrink-0 py-0.5">
                 <span>Mon</span>
                 <span>Wed</span>
                 <span>Fri</span>
               </div>
-
               <div className="flex gap-1 flex-1">
                 {heatmapWeeks.map((week, wIdx) => (
                   <div key={wIdx} className="flex flex-col gap-1 flex-1">
-                    {week.map((day, dIdx) => {
-                      const colorClass =
-                        day.level === 4
-                          ? 'bg-white'
-                          : day.level === 3
-                          ? 'bg-[#a3a3a3]'
-                          : day.level === 2
-                          ? 'bg-[#737373]'
-                          : day.level === 1
-                          ? 'bg-[#404040]'
-                          : 'bg-[#171717] border border-[#262626]';
+                    {week.map((cell, cIdx) => {
+                      let bgColor = 'bg-[#181818] border border-[#262626]';
+                      if (cell.level === 1) bgColor = 'bg-[#3b3b3b]';
+                      if (cell.level === 2) bgColor = 'bg-[#6b6b6b]';
+                      if (cell.level === 3) bgColor = 'bg-[#a3a3a3]';
+                      if (cell.level === 4) bgColor = 'bg-white';
 
                       return (
                         <div
-                          key={dIdx}
-                          onMouseEnter={() => setHoveredCell({ date: day.dateStr, count: day.count })}
+                          key={cIdx}
+                          onMouseEnter={() => setHoveredCell({ date: cell.dateStr, count: cell.count })}
                           onMouseLeave={() => setHoveredCell(null)}
-                          className={`aspect-square w-full rounded-xs transition-transform hover:scale-125 cursor-pointer ${colorClass}`}
-                          title={`${day.dateStr}: ${day.count} habits`}
+                          className={`w-full aspect-square rounded-xs transition-all cursor-pointer hover:scale-125 hover:z-10 ${bgColor}`}
+                          title={`${cell.dateStr}: ${cell.count} habits logged`}
                         />
                       );
                     })}
@@ -242,68 +250,28 @@ export const AnalyticsView: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Hover Tooltip display */}
+        <div className="h-4 mt-2">
+          {hoveredCell ? (
+            <p className="text-[10px] font-technical text-white text-right">
+              {hoveredCell.date} — <span className="text-emerald-400 font-bold">{hoveredCell.count} executions</span>
+            </p>
+          ) : (
+            <p className="text-[10px] font-technical text-[#525252] text-right">Hover over grid for daily logs</p>
+          )}
+        </div>
       </div>
 
-      {/* Two Column Trend & Monthly Distribution */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left: Daily Completion Trend */}
+      {/* Bottom Grid: Monthly Consistency Bar Chart */}
+      <div className="grid grid-cols-1 gap-6">
         <div className="bg-[#121212] border border-[#262626] p-6 rounded flex flex-col justify-between">
           <div className="flex justify-between items-center mb-6">
             <h3 className="font-technical text-xs font-bold text-white uppercase tracking-widest">
-              Daily Completion Trend
-            </h3>
-            <span className="text-xs font-technical text-[#737373] uppercase">Last 30 Days</span>
-          </div>
-
-          {/* SVG Area Line Chart */}
-          <div className="relative h-48 w-full mt-4">
-            <svg className="w-full h-full overflow-visible" viewBox="0 0 400 150">
-              <defs>
-                <linearGradient id="trendGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#ffffff" stopOpacity="0.3" />
-                  <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-
-              {/* Grid Lines */}
-              <line x1="0" y1="20" x2="400" y2="20" stroke="#262626" strokeDasharray="3 3" />
-              <line x1="0" y1="75" x2="400" y2="75" stroke="#262626" strokeDasharray="3 3" />
-              <line x1="0" y1="130" x2="400" y2="130" stroke="#262626" />
-
-              {/* Area Fill */}
-              <path
-                d="M 0 100 Q 50 120, 100 80 T 200 60 T 300 40 T 400 25 L 400 130 L 0 130 Z"
-                fill="url(#trendGradient)"
-              />
-
-              {/* Trend Line */}
-              <path
-                d="M 0 100 Q 50 120, 100 80 T 200 60 T 300 40 T 400 25"
-                fill="none"
-                stroke="#ffffff"
-                strokeWidth="2"
-              />
-
-              {/* Current Status Glow Dot */}
-              <circle cx="400" cy="25" r="4" fill="#ffffff" />
-              <circle cx="400" cy="25" r="8" fill="#ffffff" opacity="0.3" />
-            </svg>
-
-            {/* Scale Labels */}
-            <div className="absolute left-0 top-0 text-[9px] font-technical text-[#737373]">100%</div>
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 text-[9px] font-technical text-[#737373]">50%</div>
-            <div className="absolute left-0 bottom-0 text-[9px] font-technical text-[#737373]">0%</div>
-          </div>
-        </div>
-
-        {/* Right: Monthly Consistency Bar Chart */}
-        <div className="bg-[#121212] border border-[#262626] p-6 rounded flex flex-col justify-between">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="font-technical text-xs font-bold text-white uppercase tracking-widest">
-              Monthly Consistency
+              Monthly Consistency ({selectedYear})
             </h3>
             <div className="flex border border-[#262626] rounded p-0.5 bg-[#0a0a0a]">
-              {[2023, 2024, 2026].map((yr) => (
+              {[new Date().getFullYear() - 2, new Date().getFullYear() - 1, new Date().getFullYear()].map((yr) => (
                 <button
                   key={yr}
                   onClick={() => setSelectedYear(yr)}
@@ -318,26 +286,34 @@ export const AnalyticsView: React.FC = () => {
           </div>
 
           {/* Bar Chart */}
-          <div className="flex items-end justify-between gap-1.5 h-48 pt-4">
-            {monthlyRates.map((item, idx) => (
-              <div key={idx} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
-                <div
-                  className={`w-full rounded-t-xs transition-all duration-300 ${
-                    item.isPeak
-                      ? 'bg-white shadow-[0_0_10px_rgba(255,255,255,0.3)]'
-                      : 'bg-[#262626] group-hover:bg-[#404040]'
-                  }`}
-                  style={{ height: `${item.rate}%` }}
-                ></div>
-                <span
-                  className={`text-[9px] font-technical uppercase ${
-                    item.isPeak ? 'text-white font-bold' : 'text-[#737373]'
-                  }`}
-                >
-                  {item.month}
-                </span>
-              </div>
-            ))}
+          <div className="flex items-end gap-2 sm:gap-4 h-48 pt-6 border-b border-[#262626] pb-2">
+            {monthlyRates.map((m) => {
+              const isPeak = m.rate > 0 && m.rate === maxMonthlyRate;
+              return (
+                <div key={m.month} className="flex-1 flex flex-col items-center h-full justify-end group">
+                  <span className="text-[9px] font-technical text-[#737373] group-hover:text-white transition-colors mb-1 opacity-0 group-hover:opacity-100">
+                    {m.rate}%
+                  </span>
+                  <div
+                    className={`w-full rounded-t transition-all duration-300 ${
+                      isPeak
+                        ? 'bg-white shadow-[0_0_12px_rgba(255,255,255,0.4)]'
+                        : m.rate > 0
+                        ? 'bg-[#3b3b3b] hover:bg-[#525252]'
+                        : 'bg-[#181818]'
+                    }`}
+                    style={{ height: `${Math.max(m.rate, 4)}%` }}
+                  />
+                  <span
+                    className={`text-[10px] font-technical uppercase tracking-wider mt-2 ${
+                      isPeak ? 'text-white font-bold' : 'text-[#737373]'
+                    }`}
+                  >
+                    {m.month}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

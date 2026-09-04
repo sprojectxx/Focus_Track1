@@ -510,7 +510,50 @@ export const CreateHabitModal: React.FC = () => {
             </div>
           </div>
 
-          {/* Field 6: Reminders */}
+          {/* Field 6: Session Focus Duration Timing */}
+          <div className="p-4 bg-[#141414] border border-[#262626] rounded space-y-3">
+            <div className="flex justify-between items-center">
+              <label className="font-technical text-[10px] text-[#8e9192] uppercase tracking-widest block">
+                Session Focus Duration (Minutes per Session)
+              </label>
+              <span className="text-xs font-technical font-bold text-white uppercase bg-[#222] px-2 py-0.5 rounded border border-[#333]">
+                {focusMinutes} Mins / Session
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {[15, 30, 45, 60, 90, 120].map((mins) => (
+                <button
+                  key={mins}
+                  type="button"
+                  onClick={() => setFocusMinutes(mins)}
+                  className={`px-3 py-1.5 rounded text-xs font-technical uppercase font-bold transition-all cursor-pointer ${
+                    focusMinutes === mins
+                      ? 'bg-white text-black font-extrabold shadow'
+                      : 'bg-[#0a0a0a] border border-[#333] text-[#a3a3a3] hover:border-[#666] hover:text-white'
+                  }`}
+                >
+                  {mins}m
+                </button>
+              ))}
+
+              {/* Custom Number Input */}
+              <div className="flex items-center gap-2 bg-[#0a0a0a] border border-[#333] rounded px-3 py-1 text-xs">
+                <span className="font-technical text-[10px] text-[#737373] uppercase">Custom:</span>
+                <input
+                  type="number"
+                  min="5"
+                  max="480"
+                  value={focusMinutes}
+                  onChange={(e) => setFocusMinutes(Math.max(1, parseInt(e.target.value, 10) || 15))}
+                  className="w-14 bg-transparent text-center text-white font-technical font-bold text-xs focus:outline-none"
+                />
+                <span className="font-technical text-[10px] text-[#737373] uppercase">mins</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Field 7: Reminders & Target Time */}
           <div className="p-3.5 bg-[#141414] border border-[#262626] rounded flex items-center justify-between">
             <label className="flex items-center gap-2 text-xs text-white cursor-pointer select-none">
               <input

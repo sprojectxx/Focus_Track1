@@ -226,6 +226,25 @@ export const SettingsView: React.FC = () => {
             </button>
           </div>
         </section>
+
+        {/* Mobile Application (.APK) Download Section for Vercel Deployment */}
+        <section className="bg-[#121212] border border-[#262626] p-6 rounded">
+          <h3 className="font-technical text-xs font-bold text-white uppercase tracking-widest mb-3 flex items-center justify-between">
+            <span>Android Mobile Application (.APK)</span>
+            <span className="material-symbols-outlined text-[20px] text-emerald-400">android</span>
+          </h3>
+          <p className="text-xs text-[#a3a3a3] mb-5">
+            Download the native Android container built with Capacitor to receive system alarms and Firebase push notifications directly on your Android phone.
+          </p>
+          <a
+            href="/downloads/FocusTrack-Android.apk"
+            download="FocusTrack-Android.apk"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-technical text-xs font-bold uppercase tracking-widest rounded transition-colors shadow-lg cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[18px]">install_mobile</span>
+            Download Android App (.apk)
+          </a>
+        </section>
       </div>
     </div>
   );
