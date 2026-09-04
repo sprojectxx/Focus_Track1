@@ -158,6 +158,19 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     fetchSupabaseProfile();
   }, [user?.id]);
 
+const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+
+const generateUUID = (): string => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
+
   // Sync Habits & Habit Logs with Supabase when authenticated
   useEffect(() => {
     if (!isSupabaseConfigured || !user?.id) return;
@@ -181,8 +194,25 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             .select('*')
             .eq('user_id', user.id);
 
+          // Get local history map from localStorage so unsynced checks are preserved
+          const savedLocal = localStorage.getItem(HABITS_STORAGE_KEY);
+          let localHistoryMap: Record<string, Record<string, boolean>> = {};
+          if (savedLocal) {
+            try {
+              const parsedLocal: Habit[] = JSON.parse(savedLocal);
+              parsedLocal.forEach(h => {
+                localHistoryMap[h.id] = h.history || {};
+              });
+            } catch {
+              // ignore
+            }
+          }
+
           const mapped: Habit[] = habitsData.map(h => {
-            const history: Record<string, boolean> = {};
+            const history: Record<string, boolean> = {
+              ...(localHistoryMap[h.id] || {}),
+            };
+
             if (logsData) {
               logsData
                 .filter(l => l.habit_id === h.id)
@@ -190,6 +220,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                   history[l.completed_date] = l.completed;
                 });
             }
+
             return {
               id: h.id,
               name: h.name,
@@ -287,7 +318,6 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setSelectedDateStr(dStr);
   };
 
-
   const setViewingMonthYear = (year: number, month: number) => {
     setViewingYear(year);
     setViewingMonth(month);
@@ -295,12 +325,16 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Toggle Habit on a Specific Day (Synced with Supabase habit_logs)
   const toggleHabitDay = async (habitId: string, dateStr: string) => {
-    let newVal = false;
+    const targetHabit = habits.find(h => h.id === habitId);
+    if (!targetHabit) return;
+
+    const currentVal = !!targetHabit.history[dateStr];
+    const newVal = !currentVal;
+
+    // 1. Optimistic update to local state
     setHabits(prev =>
       prev.map(habit => {
         if (habit.id !== habitId) return habit;
-        const currentVal = !!habit.history[dateStr];
-        newVal = !currentVal;
         return {
           ...habit,
           history: {
@@ -311,31 +345,77 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       })
     );
 
+    // 2. Sync with Supabase
     if (isSupabaseConfigured && user?.id) {
       try {
-        if (newVal) {
-          await supabase.from('habit_logs').upsert({
-            habit_id: habitId,
+        let activeId = habitId;
+
+        // If habit has a non-UUID ID, insert habit to Supabase first to get a valid UUID
+        if (!isUUID(activeId)) {
+          const { data: insertedHabit, error: insertErr } = await supabase.from('habits').insert({
             user_id: user.id,
-            completed_date: dateStr,
-            completed: true,
-          });
-        } else {
-          await supabase.from('habit_logs').delete().match({
-            habit_id: habitId,
-            user_id: user.id,
-            completed_date: dateStr,
-          });
+            name: targetHabit.name,
+            category: targetHabit.category,
+            category_label: targetHabit.categoryLabel || targetHabit.category,
+            description: targetHabit.description || '',
+            priority: targetHabit.priority || 'medium',
+            icon: targetHabit.icon || 'target',
+            custom_image: targetHabit.customImage || null,
+            visual_type: targetHabit.visualType || 'icon',
+            schedule_days: targetHabit.scheduleDays || [0, 1, 2, 3, 4, 5, 6],
+            schedule_type: targetHabit.scheduleType || 'daily',
+            reminder_enabled: targetHabit.reminderEnabled || false,
+            reminder_time: targetHabit.reminderTime || '08:00',
+            target_time: targetHabit.targetTime || 'Morning',
+            focus_minutes_per_session: targetHabit.focusMinutesPerSession || 30,
+            is_archived: false,
+            created_at: new Date().toISOString(),
+          }).select().single();
+
+          if (insertedHabit && !insertErr) {
+            activeId = insertedHabit.id;
+            setHabits(prev =>
+              prev.map(h => (h.id === habitId ? { ...h, id: activeId } : h))
+            );
+          }
+        }
+
+        if (isUUID(activeId)) {
+          if (newVal) {
+            const { error: upsertErr } = await supabase.from('habit_logs').upsert(
+              {
+                habit_id: activeId,
+                user_id: user.id,
+                completed_date: dateStr,
+                completed: true,
+              },
+              { onConflict: 'habit_id,completed_date' }
+            );
+
+            if (upsertErr) {
+              console.error('[HabitContext] Upsert log error:', upsertErr);
+            }
+          } else {
+            const { error: delErr } = await supabase.from('habit_logs').delete().match({
+              habit_id: activeId,
+              user_id: user.id,
+              completed_date: dateStr,
+            });
+
+            if (delErr) {
+              console.error('[HabitContext] Delete log error:', delErr);
+            }
+          }
         }
       } catch (err) {
-        console.error('Failed to sync habit log with Supabase:', err);
+        console.error('[HabitContext] Sync habit log error:', err);
       }
     }
   };
 
   // Create Habit (Synced with Supabase habits)
   const createHabit = async (habitData: Omit<Habit, 'id' | 'history' | 'isArchived' | 'createdAt'>) => {
-    let habitId = `habit-${Date.now()}`;
+    let habitId = generateUUID();
 
     if (isSupabaseConfigured && user?.id) {
       try {
