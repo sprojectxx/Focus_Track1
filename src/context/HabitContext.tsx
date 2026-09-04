@@ -140,25 +140,14 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             creed: data.creed || getRandomMottoString(),
           });
         } else {
-          // New profile in Supabase — initialize with random motto quote and 0 discipline score
+          // New profile — prepopulate initial state with Google user metadata for onboarding screen
           const randomCreed = getRandomMottoString();
-          const initialProf: UserProfile = {
+          setUserProfile({
             name: user.user_metadata?.full_name || 'Operator',
             title: 'TACTICAL OPERATOR',
             avatarUrl: user.user_metadata?.avatar_url || INITIAL_USER_PROFILE.avatarUrl,
             disciplineScore: 0,
             creed: randomCreed,
-          };
-          setUserProfile(initialProf);
-
-          await supabase.from('profiles').upsert({
-            id: user.id,
-            name: initialProf.name,
-            title: initialProf.title,
-            avatar_url: initialProf.avatarUrl,
-            creed: initialProf.creed,
-            discipline_score: 0,
-            updated_at: new Date().toISOString(),
           });
         }
       } catch (err) {

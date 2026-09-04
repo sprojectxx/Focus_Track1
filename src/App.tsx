@@ -18,31 +18,96 @@ import { NotificationsModal } from './components/NotificationsModal';
 import { ProfileModal } from './components/ProfileModal';
 import { initPushNotifications } from './lib/notifications';
 
+import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
+
 const AppContent: React.FC = () => {
   const { currentTab, selectedHabitId } = useHabits();
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [isOnboarded, setIsOnboarded] = useState<boolean>(true);
+  const [checkingOnboarding, setCheckingOnboarding] = useState<boolean>(true);
 
   useEffect(() => {
-    if (user?.id) {
+    let isMounted = true;
+
+    const checkUserOnboarding = async () => {
+      if (!user?.id) {
+        if (isMounted) {
+          setCheckingOnboarding(false);
+        }
+        return;
+      }
+
       // Initialize FCM & Push Notifications for Android/Native
       initPushNotifications(user.id);
 
-      // Check onboarding state
-      const onboarded = localStorage.getItem(`focustrack_onboarded_${user.id}`);
-      if (!onboarded) {
-        setIsOnboarded(false);
-      } else {
-        setIsOnboarded(true);
+      // 1. Check local storage first
+      const localOnboarded = localStorage.getItem(`focustrack_onboarded_${user.id}`);
+      if (localOnboarded === 'true') {
+        if (isMounted) {
+          setIsOnboarded(true);
+          setCheckingOnboarding(false);
+        }
+        return;
       }
-    }
+
+      // 2. Check Supabase DB profiles & habits table for existing account data
+      if (isSupabaseConfigured) {
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('id, name, creed')
+            .eq('id', user.id)
+            .maybeSingle();
+
+          if (profile && profile.name) {
+            // Existing authenticated account in Supabase database!
+            localStorage.setItem(`focustrack_onboarded_${user.id}`, 'true');
+            if (isMounted) {
+              setIsOnboarded(true);
+              setCheckingOnboarding(false);
+            }
+            return;
+          }
+
+          // Check if user has habits created
+          const { data: habits } = await supabase
+            .from('habits')
+            .select('id')
+            .eq('user_id', user.id)
+            .limit(1);
+
+          if (habits && habits.length > 0) {
+            localStorage.setItem(`focustrack_onboarded_${user.id}`, 'true');
+            if (isMounted) {
+              setIsOnboarded(true);
+              setCheckingOnboarding(false);
+            }
+            return;
+          }
+        } catch (err) {
+          console.error('[App] Onboarding check error:', err);
+        }
+      }
+
+      // 3. New account — needs onboarding
+      if (isMounted) {
+        setIsOnboarded(false);
+        setCheckingOnboarding(false);
+      }
+    };
+
+    checkUserOnboarding();
+
+    return () => {
+      isMounted = false;
+    };
   }, [user?.id]);
 
-  if (loading) {
+  if (authLoading || (user && checkingOnboarding)) {
     return (
       <div className="min-h-screen bg-[#131313] flex flex-col justify-center items-center text-slate-300">
         <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="text-xs text-slate-400 font-medium">Loading session...</p>
+        <p className="text-xs text-slate-400 font-technical uppercase tracking-widest">Verifying Protocol Session...</p>
       </div>
     );
   }
