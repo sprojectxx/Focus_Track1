@@ -75,8 +75,8 @@ export const LoginScreen: React.FC = () => {
 
         {/* Hero Motto Section - Ex Duris Gloria */}
         <div className="bg-[#0e0e0e] border border-[#262626] rounded-xl p-6 mb-8 text-center relative overflow-hidden group">
-          <div className="absolute top-2 right-3 flex items-center gap-1 text-[9px] font-technical text-emerald-400 uppercase tracking-widest bg-emerald-950/60 border border-emerald-800/50 px-2 py-0.5 rounded">
-            <Flame className="w-3 h-3 text-emerald-400" />
+          <div className="absolute top-2 right-3 flex items-center gap-1 text-[9px] font-technical text-white uppercase tracking-widest bg-neutral-900 border border-neutral-700 px-2 py-0.5 rounded">
+            <Flame className="w-3 h-3 text-white" />
             <span>MOTTO OF THE DAY</span>
           </div>
 
@@ -102,8 +102,8 @@ export const LoginScreen: React.FC = () => {
 
         {/* Setup Banner if env vars missing */}
         {!isConfigured && (
-          <div className="mb-6 p-3 rounded-xl bg-amber-950/30 border border-amber-800/40 text-amber-300 text-xs flex items-center gap-2">
-            <Shield className="w-4 h-4 shrink-0 text-amber-400" />
+          <div className="mb-6 p-3 rounded-xl bg-neutral-900 border border-neutral-700 text-neutral-300 text-xs flex items-center gap-2">
+            <Shield className="w-4 h-4 shrink-0 text-white" />
             <span>Supabase credentials updating. Demo mode enabled for instant preview.</span>
           </div>
         )}

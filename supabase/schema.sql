@@ -174,3 +174,29 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE OR REPLACE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- ===================================================
+-- 7. TRIGGER TO ENFORCE TODAY-ONLY HABIT LOG MUTATIONS
+-- ===================================================
+CREATE OR REPLACE FUNCTION public.enforce_today_only_habit_log()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
+    IF NEW.completed_date <> CURRENT_DATE THEN
+      RAISE EXCEPTION 'Habit logs can only be created or modified for today''s date (%)', CURRENT_DATE;
+    END IF;
+    RETURN NEW;
+  ELSIF TG_OP = 'DELETE' THEN
+    IF OLD.completed_date <> CURRENT_DATE THEN
+      RAISE EXCEPTION 'Habit logs can only be removed for today''s date (%)', CURRENT_DATE;
+    END IF;
+    RETURN OLD;
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE TRIGGER enforce_habit_logs_today_only
+  BEFORE INSERT OR UPDATE OR DELETE ON public.habit_logs
+  FOR EACH ROW EXECUTE FUNCTION public.enforce_today_only_habit_log();
+

@@ -106,7 +106,7 @@ const AppContent: React.FC = () => {
   if (authLoading || (user && checkingOnboarding)) {
     return (
       <div className="min-h-screen bg-[#131313] flex flex-col justify-center items-center text-slate-300">
-        <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" />
+        <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mb-4" />
         <p className="text-xs text-slate-400 font-technical uppercase tracking-widest">Verifying Protocol Session...</p>
       </div>
     );

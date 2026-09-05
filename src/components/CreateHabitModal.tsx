@@ -167,7 +167,7 @@ export const CreateHabitModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
       {/* Backdrop */}
       <div
         onClick={handleClose}
@@ -175,14 +175,14 @@ export const CreateHabitModal: React.FC = () => {
       ></div>
 
       {/* Modal Container */}
-      <div className="relative w-full max-w-2xl bg-[#0e0e0e] border border-[#333] shadow-2xl z-10 flex flex-col max-h-[92vh] overflow-y-auto custom-scrollbar rounded animate-in zoom-in-95 duration-150">
+      <div className="relative w-full max-w-2xl bg-[#0e0e0e] border border-[#333] shadow-2xl z-10 flex flex-col max-h-[88vh] sm:max-h-[92vh] overflow-y-auto custom-scrollbar rounded animate-in zoom-in-95 duration-150 mb-10 sm:mb-0">
         {/* Header */}
-        <div className="p-5 sm:p-6 border-b border-[#222] bg-[#121212] flex justify-between items-start sticky top-0 z-20">
+        <div className="p-4 sm:p-6 border-b border-[#222] bg-[#121212] flex justify-between items-start sticky top-0 z-20">
           <div>
-            <span className="font-technical text-[10px] text-[#737373] uppercase tracking-[0.2em] block mb-1">
+            <span className="font-technical text-[9px] sm:text-[10px] text-[#737373] uppercase tracking-[0.2em] block mb-1">
               HABIT SPECIFICATION
             </span>
-            <h2 className="font-geist text-xl sm:text-2xl font-extrabold text-white tracking-tight uppercase">
+            <h2 className="font-geist text-lg sm:text-2xl font-extrabold text-white tracking-tight uppercase">
               {editingHabit ? 'MODIFY HABIT PROTOCOL' : 'CREATE CUSTOM HABIT'}
             </h2>
             <p className="text-xs text-[#a3a3a3] mt-0.5">
@@ -191,15 +191,15 @@ export const CreateHabitModal: React.FC = () => {
           </div>
           <button
             onClick={handleClose}
-            className="text-[#737373] hover:text-white p-1 rounded hover:bg-[#222] transition-colors cursor-pointer"
-            aria-label="Close"
+            className="text-[#737373] hover:text-white p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded hover:bg-[#222] transition-colors cursor-pointer"
+            aria-label="Close modal"
           >
             <span className="material-symbols-outlined text-[22px]">close</span>
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-5 sm:space-y-6">
           {/* Field 1: Habit Name */}
           <div>
             <label className="font-technical text-[10px] text-[#8e9192] uppercase tracking-widest block mb-1.5">
@@ -211,17 +211,17 @@ export const CreateHabitModal: React.FC = () => {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Build Project, Coding, Gaming, Gym, Studying, Reading..."
-              className="w-full bg-[#141414] border border-[#333] rounded px-4 py-2.5 text-white text-sm focus:outline-none focus:border-white transition-colors"
+              className="w-full bg-[#141414] border border-[#333] rounded px-4 py-2.5 min-h-[44px] text-white text-sm focus:outline-none focus:border-white transition-colors"
             />
             {/* Quick Suggestions */}
-            <div className="mt-2 flex flex-wrap gap-1.5 items-center">
+            <div className="mt-2.5 flex flex-wrap gap-1.5 items-center">
               <span className="text-[10px] font-technical text-[#737373] uppercase mr-1">Quick Suggestions:</span>
               {['Build App', 'Gym & Lifting', 'Ranked Gaming', 'Study Algorithms', 'Freelance Work', 'Writing Journal'].map((sug) => (
                 <button
                   key={sug}
                   type="button"
                   onClick={() => setName(sug)}
-                  className="text-[10px] font-technical bg-[#1c1c1c] text-[#a3a3a3] hover:text-white hover:bg-[#2a2a2a] px-2 py-0.5 rounded cursor-pointer transition-colors"
+                  className="text-[10px] font-technical bg-[#1c1c1c] text-[#a3a3a3] hover:text-white hover:bg-[#2a2a2a] px-2.5 py-1 min-h-[36px] flex items-center rounded cursor-pointer transition-colors"
                 >
                   + {sug}
                 </button>
@@ -230,8 +230,8 @@ export const CreateHabitModal: React.FC = () => {
           </div>
 
           {/* Field 2: Visual Identifier (Icon / Upload) */}
-          <div className="p-4 bg-[#141414] border border-[#262626] rounded space-y-4">
-            <div className="flex justify-between items-center">
+          <div className="p-3.5 sm:p-4 bg-[#141414] border border-[#262626] rounded space-y-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
               <label className="font-technical text-[10px] text-[#8e9192] uppercase tracking-widest">
                 Visual Identifier (Monochrome Black / White)
               </label>
@@ -251,11 +251,11 @@ export const CreateHabitModal: React.FC = () => {
             </div>
 
             {/* Mode Switcher */}
-            <div className="flex border border-[#333] rounded p-0.5 bg-[#0a0a0a] w-fit">
+            <div className="flex border border-[#333] rounded p-0.5 bg-[#0a0a0a] w-full sm:w-fit">
               <button
                 type="button"
                 onClick={() => setVisualMode('icon')}
-                className={`px-3 py-1 text-xs font-technical uppercase tracking-wider rounded transition-colors cursor-pointer ${
+                className={`flex-1 sm:flex-initial px-3 py-2 min-h-[40px] text-xs font-technical uppercase tracking-wider rounded transition-colors cursor-pointer ${
                   visualMode === 'icon' ? 'bg-white text-black font-bold' : 'text-[#a3a3a3] hover:text-white'
                 }`}
               >
@@ -264,7 +264,7 @@ export const CreateHabitModal: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setVisualMode('upload')}
-                className={`px-3 py-1 text-xs font-technical uppercase tracking-wider rounded transition-colors cursor-pointer ${
+                className={`flex-1 sm:flex-initial px-3 py-2 min-h-[40px] text-xs font-technical uppercase tracking-wider rounded transition-colors cursor-pointer ${
                   visualMode === 'upload' ? 'bg-white text-black font-bold' : 'text-[#a3a3a3] hover:text-white'
                 }`}
               >
@@ -286,14 +286,14 @@ export const CreateHabitModal: React.FC = () => {
                       value={iconSearch}
                       onChange={(e) => setIconSearch(e.target.value)}
                       placeholder="Search icons (e.g. code, game, gym, read, wallet, task)..."
-                      className="w-full bg-[#0a0a0a] border border-[#333] rounded pl-8 pr-3 py-1.5 text-xs text-white placeholder-[#555] focus:outline-none focus:border-white"
+                      className="w-full bg-[#0a0a0a] border border-[#333] rounded pl-8 pr-3 py-2 min-h-[40px] text-xs text-white placeholder-[#555] focus:outline-none focus:border-white"
                     />
                   </div>
 
                   <select
                     value={iconCategory}
                     onChange={(e) => setIconCategory(e.target.value)}
-                    className="bg-[#0a0a0a] border border-[#333] rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-white cursor-pointer"
+                    className="bg-[#0a0a0a] border border-[#333] rounded px-3 py-2 min-h-[40px] text-xs text-white focus:outline-none focus:border-white cursor-pointer"
                   >
                     {MONOCHROME_ICON_CATEGORIES.map((cat) => (
                       <option key={cat} value={cat}>
@@ -304,7 +304,7 @@ export const CreateHabitModal: React.FC = () => {
                 </div>
 
                 {/* Icons Grid */}
-                <div className="grid grid-cols-6 sm:grid-cols-9 md:grid-cols-11 gap-1.5 max-h-48 overflow-y-auto custom-scrollbar p-1 bg-[#0a0a0a] border border-[#262626] rounded">
+                <div className="grid grid-cols-5 sm:grid-cols-9 md:grid-cols-11 gap-2 max-h-48 overflow-y-auto custom-scrollbar p-2 bg-[#0a0a0a] border border-[#262626] rounded">
                   {filteredIcons.length === 0 ? (
                     <div className="col-span-full p-4 text-center text-xs font-technical text-[#737373]">
                       No matching monochrome icons found.
@@ -320,12 +320,13 @@ export const CreateHabitModal: React.FC = () => {
                             setSelectedIcon(item.id);
                             setCustomImage(undefined);
                           }}
-                          className={`p-2 rounded flex flex-col items-center justify-center transition-all cursor-pointer ${
+                          className={`p-2.5 min-h-[44px] min-w-[44px] rounded flex flex-col items-center justify-center transition-all cursor-pointer ${
                             isSelected
                               ? 'bg-white text-black ring-2 ring-white scale-105'
                               : 'bg-[#141414] text-[#8e9192] hover:bg-[#222] hover:text-white border border-[#222]'
                           }`}
                           title={`${item.name} (${item.category})`}
+                          aria-label={`Select icon ${item.name}`}
                         >
                           <span className="material-symbols-outlined text-[20px]">{item.id}</span>
                         </button>
@@ -360,14 +361,14 @@ export const CreateHabitModal: React.FC = () => {
                     <div className="flex gap-2">
                       <label
                         htmlFor="habit-image-upload"
-                        className="px-3 py-1 text-xs font-technical text-white border border-[#444] rounded hover:bg-[#222] cursor-pointer"
+                        className="px-3.5 py-2 min-h-[44px] text-xs font-technical text-white border border-[#444] rounded hover:bg-[#222] cursor-pointer flex items-center"
                       >
                         Replace Image
                       </label>
                       <button
                         type="button"
                         onClick={removeUploadedImage}
-                        className="px-3 py-1 text-xs font-technical text-red-400 border border-red-900/50 rounded hover:bg-red-950/30 cursor-pointer"
+                        className="px-3.5 py-2 min-h-[44px] text-xs font-technical text-red-400 border border-red-900/50 rounded hover:bg-red-950/30 cursor-pointer flex items-center"
                       >
                         Remove
                       </button>
@@ -407,7 +408,7 @@ export const CreateHabitModal: React.FC = () => {
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 placeholder="e.g. Technology, Gym, Work..."
-                className="w-full bg-[#141414] border border-[#333] rounded px-3 py-2 text-white text-xs focus:outline-none focus:border-white"
+                className="w-full bg-[#141414] border border-[#333] rounded px-3 py-2.5 min-h-[44px] text-white text-xs focus:outline-none focus:border-white"
               />
             </div>
 
@@ -418,7 +419,7 @@ export const CreateHabitModal: React.FC = () => {
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as PriorityLevel)}
-                className="w-full bg-[#141414] border border-[#333] rounded px-3 py-2 text-white text-xs focus:outline-none focus:border-white cursor-pointer"
+                className="w-full bg-[#141414] border border-[#333] rounded px-3 py-2.5 min-h-[44px] text-white text-xs focus:outline-none focus:border-white cursor-pointer"
               >
                 <option value="high">High (Core Priority)</option>
                 <option value="medium">Medium (Standard)</option>
@@ -433,7 +434,7 @@ export const CreateHabitModal: React.FC = () => {
               <select
                 value={targetTime}
                 onChange={(e) => setTargetTime(e.target.value)}
-                className="w-full bg-[#141414] border border-[#333] rounded px-3 py-2 text-white text-xs focus:outline-none focus:border-white cursor-pointer"
+                className="w-full bg-[#141414] border border-[#333] rounded px-3 py-2.5 min-h-[44px] text-white text-xs focus:outline-none focus:border-white cursor-pointer"
               >
                 <option value="Morning">Morning</option>
                 <option value="Afternoon">Afternoon</option>
@@ -460,7 +461,7 @@ export const CreateHabitModal: React.FC = () => {
 
           {/* Field 5: Execution Schedule */}
           <div>
-            <div className="flex justify-between items-center mb-1.5">
+            <div className="flex justify-between items-center mb-1.5 flex-wrap gap-1">
               <label className="font-technical text-[10px] text-[#8e9192] uppercase tracking-widest">
                 Execution Days
               </label>
@@ -489,7 +490,7 @@ export const CreateHabitModal: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-7 gap-1.5">
+            <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
               {daysLabels.map((label, idx) => {
                 const isSelected = scheduleDays.includes(idx);
                 return (
@@ -497,7 +498,7 @@ export const CreateHabitModal: React.FC = () => {
                     key={idx}
                     type="button"
                     onClick={() => toggleDay(idx)}
-                    className={`py-2.5 border rounded text-xs font-technical uppercase font-bold transition-all cursor-pointer ${
+                    className={`py-3 min-h-[44px] border rounded text-xs font-technical uppercase font-bold transition-all cursor-pointer flex items-center justify-center ${
                       isSelected
                         ? 'border-white bg-white text-black'
                         : 'border-[#2a2a2a] bg-[#141414] text-[#8e9192] hover:border-[#444] hover:text-white'
@@ -511,8 +512,8 @@ export const CreateHabitModal: React.FC = () => {
           </div>
 
           {/* Field 6: Session Focus Duration Timing */}
-          <div className="p-4 bg-[#141414] border border-[#262626] rounded space-y-3">
-            <div className="flex justify-between items-center">
+          <div className="p-3.5 sm:p-4 bg-[#141414] border border-[#262626] rounded space-y-3">
+            <div className="flex justify-between items-center flex-wrap gap-1">
               <label className="font-technical text-[10px] text-[#8e9192] uppercase tracking-widest block">
                 Session Focus Duration (Minutes per Session)
               </label>
@@ -527,7 +528,7 @@ export const CreateHabitModal: React.FC = () => {
                   key={mins}
                   type="button"
                   onClick={() => setFocusMinutes(mins)}
-                  className={`px-3 py-1.5 rounded text-xs font-technical uppercase font-bold transition-all cursor-pointer ${
+                  className={`px-3.5 py-2 min-h-[40px] rounded text-xs font-technical uppercase font-bold transition-all cursor-pointer flex items-center ${
                     focusMinutes === mins
                       ? 'bg-white text-black font-extrabold shadow'
                       : 'bg-[#0a0a0a] border border-[#333] text-[#a3a3a3] hover:border-[#666] hover:text-white'
@@ -538,7 +539,7 @@ export const CreateHabitModal: React.FC = () => {
               ))}
 
               {/* Custom Number Input */}
-              <div className="flex items-center gap-2 bg-[#0a0a0a] border border-[#333] rounded px-3 py-1 text-xs">
+              <div className="flex items-center gap-2 bg-[#0a0a0a] border border-[#333] rounded px-3 py-2 min-h-[40px] text-xs">
                 <span className="font-technical text-[10px] text-[#737373] uppercase">Custom:</span>
                 <input
                   type="number"
@@ -554,8 +555,8 @@ export const CreateHabitModal: React.FC = () => {
           </div>
 
           {/* Field 7: Reminders & Target Time */}
-          <div className="p-3.5 bg-[#141414] border border-[#262626] rounded flex items-center justify-between">
-            <label className="flex items-center gap-2 text-xs text-white cursor-pointer select-none">
+          <div className="p-3.5 bg-[#141414] border border-[#262626] rounded flex items-center justify-between flex-wrap gap-2">
+            <label className="flex items-center gap-2 text-xs text-white cursor-pointer select-none min-h-[44px]">
               <input
                 type="checkbox"
                 checked={reminderEnabled}
@@ -572,23 +573,23 @@ export const CreateHabitModal: React.FC = () => {
                 type="time"
                 value={reminderTime}
                 onChange={(e) => setReminderTime(e.target.value)}
-                className="bg-[#0a0a0a] border border-[#333] text-white px-2.5 py-1 text-xs rounded font-technical focus:outline-none focus:border-white"
+                className="bg-[#0a0a0a] border border-[#333] text-white px-3 py-2 min-h-[44px] text-xs rounded font-technical focus:outline-none focus:border-white"
               />
             )}
           </div>
 
           {/* Action Buttons */}
-          <div className="pt-4 border-t border-[#222] flex justify-end gap-3">
+          <div className="pt-4 border-t border-[#222] flex flex-col sm:flex-row justify-end gap-2.5">
             <button
               type="button"
               onClick={handleClose}
-              className="px-5 py-2.5 border border-[#333] hover:border-white text-[#a3a3a3] hover:text-white transition-colors rounded font-technical text-xs uppercase tracking-widest cursor-pointer"
+              className="w-full sm:w-auto px-5 py-3 min-h-[44px] border border-[#333] hover:border-white text-[#a3a3a3] hover:text-white transition-colors rounded font-technical text-xs uppercase tracking-widest cursor-pointer flex items-center justify-center"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 bg-white text-black hover:bg-neutral-200 transition-colors rounded font-technical text-xs font-bold uppercase tracking-widest flex items-center gap-1.5 cursor-pointer shadow-lg"
+              className="w-full sm:w-auto px-6 py-3 min-h-[44px] bg-white text-black hover:bg-neutral-200 transition-colors rounded font-technical text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-1.5 cursor-pointer shadow-lg active:scale-95"
             >
               <span className="material-symbols-outlined text-[17px]">
                 {editingHabit ? 'save' : 'add'}

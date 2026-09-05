@@ -148,7 +148,7 @@ export const SettingsView: React.FC = () => {
 
               <button
                 type="submit"
-                className="px-6 py-2.5 bg-white text-black hover:bg-neutral-200 font-technical text-xs font-bold uppercase tracking-widest rounded transition-colors cursor-pointer"
+                className="w-full sm:w-auto px-6 py-2.5 min-h-[44px] bg-white text-black hover:bg-neutral-200 font-technical text-xs font-bold uppercase tracking-widest rounded transition-colors cursor-pointer flex items-center justify-center"
               >
                 Save Credentials
               </button>
@@ -157,7 +157,7 @@ export const SettingsView: React.FC = () => {
         </section>
 
         {/* Data Management */}
-        <section className="bg-[#121212] border border-[#262626] p-6 rounded">
+        <section className="bg-[#121212] border border-[#262626] p-4 sm:p-6 rounded">
           <h3 className="font-technical text-xs font-bold text-white uppercase tracking-widest mb-6 flex items-center justify-between">
             <span>Data Synchronization & Backup</span>
             <span className="material-symbols-outlined text-[18px] text-[#737373]">cloud_sync</span>
@@ -175,7 +175,7 @@ export const SettingsView: React.FC = () => {
               </div>
               <button
                 onClick={handleExportData}
-                className="w-full py-2 border border-[#444] hover:border-white text-white font-technical text-xs uppercase tracking-widest rounded transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-2.5 min-h-[44px] border border-[#444] hover:border-white text-white font-technical text-xs uppercase tracking-widest rounded transition-colors flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[16px]">download</span>
                 Export JSON
@@ -191,7 +191,7 @@ export const SettingsView: React.FC = () => {
                   Restore habits and consistency logs from a previously exported backup file.
                 </p>
               </div>
-              <label className="w-full py-2 border border-[#444] hover:border-white text-white font-technical text-xs uppercase tracking-widest rounded transition-colors flex items-center justify-center gap-2 cursor-pointer text-center">
+              <label className="w-full py-2.5 min-h-[44px] border border-[#444] hover:border-white text-white font-technical text-xs uppercase tracking-widest rounded transition-colors flex items-center justify-center gap-2 cursor-pointer text-center flex items-center justify-center">
                 <span className="material-symbols-outlined text-[16px]">upload</span>
                 Import JSON
                 <input
@@ -220,7 +220,7 @@ export const SettingsView: React.FC = () => {
                   resetToDefaults();
                 }
               }}
-              className="px-4 py-2 border border-[#ffb4ab]/40 text-[#ffb4ab] hover:bg-[#ffb4ab]/10 font-technical text-xs uppercase tracking-wider rounded transition-colors cursor-pointer"
+              className="w-full sm:w-auto px-4 py-2.5 min-h-[44px] border border-[#ffb4ab]/40 text-[#ffb4ab] hover:bg-[#ffb4ab]/10 font-technical text-xs uppercase tracking-wider rounded transition-colors cursor-pointer flex items-center justify-center"
             >
               Reset to Defaults
             </button>
@@ -228,10 +228,10 @@ export const SettingsView: React.FC = () => {
         </section>
 
         {/* Mobile Application (.APK) Download Section for Vercel Deployment */}
-        <section className="bg-[#121212] border border-[#262626] p-6 rounded">
+        <section className="bg-[#121212] border border-[#262626] p-4 sm:p-6 rounded">
           <h3 className="font-technical text-xs font-bold text-white uppercase tracking-widest mb-3 flex items-center justify-between">
             <span>Android Mobile Application (.APK)</span>
-            <span className="material-symbols-outlined text-[20px] text-emerald-400">android</span>
+            <span className="material-symbols-outlined text-[20px] text-white">android</span>
           </h3>
           <p className="text-xs text-[#a3a3a3] mb-5">
             Download the native Android container built with Capacitor to receive system alarms and Firebase push notifications directly on your Android phone.
@@ -239,7 +239,7 @@ export const SettingsView: React.FC = () => {
           <a
             href="/downloads/FocusTrack-Android.apk"
             download="FocusTrack-Android.apk"
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-technical text-xs font-bold uppercase tracking-widest rounded transition-colors shadow-lg cursor-pointer"
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 min-h-[44px] bg-white hover:bg-neutral-200 text-black font-technical text-xs font-bold uppercase tracking-widest rounded transition-colors shadow-lg cursor-pointer w-full sm:w-auto"
           >
             <span className="material-symbols-outlined text-[18px]">install_mobile</span>
             Download Android App (.apk)

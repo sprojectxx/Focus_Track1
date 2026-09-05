@@ -13,10 +13,10 @@ export const BottomNavBar: React.FC = () => {
   };
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 w-full bg-[#0d0d0d]/95 backdrop-blur-md border-t border-[#262626] z-50 px-2 py-1.5 pb-safe flex justify-around items-center shadow-2xl">
+    <nav className="md:hidden fixed bottom-0 left-0 w-full bg-[#0d0d0d]/95 backdrop-blur-md border-t border-[#262626] z-50 px-1 sm:px-2 py-1.5 pb-safe flex justify-around items-center shadow-2xl">
       <button
         onClick={() => handleTabChange('dashboard')}
-        className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition-all duration-200 cursor-pointer ${
+        className={`flex flex-col items-center justify-center py-1 px-1.5 sm:px-3 min-h-[44px] min-w-[44px] rounded-lg transition-all duration-200 cursor-pointer ${
           currentTab === 'dashboard'
             ? 'text-white bg-white/10 border border-white/20 shadow-sm'
             : 'text-[#8e9192] hover:text-white'
@@ -30,7 +30,7 @@ export const BottomNavBar: React.FC = () => {
 
       <button
         onClick={() => handleTabChange('habits')}
-        className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition-all duration-200 cursor-pointer ${
+        className={`flex flex-col items-center justify-center py-1 px-1.5 sm:px-3 min-h-[44px] min-w-[44px] rounded-lg transition-all duration-200 cursor-pointer ${
           currentTab === 'habits'
             ? 'text-white bg-white/10 border border-white/20 shadow-sm'
             : 'text-[#8e9192] hover:text-white'
@@ -44,7 +44,7 @@ export const BottomNavBar: React.FC = () => {
 
       <button
         onClick={() => handleTabChange('calendar')}
-        className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition-all duration-200 cursor-pointer ${
+        className={`flex flex-col items-center justify-center py-1 px-1.5 sm:px-3 min-h-[44px] min-w-[44px] rounded-lg transition-all duration-200 cursor-pointer ${
           currentTab === 'calendar'
             ? 'text-white bg-white/10 border border-white/20 shadow-sm'
             : 'text-[#8e9192] hover:text-white'
@@ -58,7 +58,7 @@ export const BottomNavBar: React.FC = () => {
 
       <button
         onClick={() => handleTabChange('analytics')}
-        className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition-all duration-200 cursor-pointer ${
+        className={`flex flex-col items-center justify-center py-1 px-1.5 sm:px-3 min-h-[44px] min-w-[44px] rounded-lg transition-all duration-200 cursor-pointer ${
           currentTab === 'analytics'
             ? 'text-white bg-white/10 border border-white/20 shadow-sm'
             : 'text-[#8e9192] hover:text-white'
@@ -72,7 +72,7 @@ export const BottomNavBar: React.FC = () => {
 
       <button
         onClick={() => handleTabChange('settings')}
-        className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition-all duration-200 cursor-pointer ${
+        className={`flex flex-col items-center justify-center py-1 px-1.5 sm:px-3 min-h-[44px] min-w-[44px] rounded-lg transition-all duration-200 cursor-pointer ${
           currentTab === 'settings'
             ? 'text-white bg-white/10 border border-white/20 shadow-sm'
             : 'text-[#8e9192] hover:text-white'

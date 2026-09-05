@@ -55,6 +55,11 @@ export const HabitVisual: React.FC<HabitVisualProps> = ({
     );
   }
 
+  let displayIcon = habit.icon?.trim() || 'task_alt';
+  if (/[\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}\u{1F600}-\u{1F64F}]/u.test(displayIcon)) {
+    displayIcon = 'target';
+  }
+
   return (
     <span
       className={`material-symbols-outlined shrink-0 inline-flex items-center justify-center select-none ${
@@ -62,7 +67,7 @@ export const HabitVisual: React.FC<HabitVisualProps> = ({
       } ${container} ${className}`}
       title={habit.name}
     >
-      {habit.icon || 'task_alt'}
+      {displayIcon}
     </span>
   );
 };

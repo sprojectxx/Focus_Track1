@@ -5,6 +5,7 @@ import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import { useAuth } from './AuthContext';
 import { getRandomMottoString } from '../data/motivationalQuotes';
 import { scheduleHabitReminder, cancelHabitReminder } from '../lib/notifications';
+import { getTodayYMD, getDaysInMonth, getElapsedDaysInMonth, isToday } from '../utils/date';
 
 interface HabitContextType {
   habits: Habit[];
@@ -72,7 +73,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1; // 1-indexed (1-12)
-  const todayStr = `${currentYear}-${currentMonth.toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
+  const todayStr = getTodayYMD();
 
   const [currentDate] = useState<Date>(now);
   const [viewingYear, setViewingYear] = useState<number>(currentYear);
@@ -312,7 +313,7 @@ const generateUUID = (): string => {
     const today = new Date();
     const y = today.getFullYear();
     const m = today.getMonth() + 1;
-    const dStr = `${y}-${m.toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+    const dStr = getTodayYMD();
     setViewingYear(y);
     setViewingMonth(m);
     setSelectedDateStr(dStr);
@@ -324,7 +325,13 @@ const generateUUID = (): string => {
   };
 
   // Toggle Habit on a Specific Day (Synced with Supabase habit_logs)
+  // Only today's completions are mutable; past and future dates are read-only.
   const toggleHabitDay = async (habitId: string, dateStr: string) => {
+    if (!isToday(dateStr)) {
+      console.warn('[HabitContext] Habit completion can only be toggled for today:', dateStr);
+      return;
+    }
+
     const targetHabit = habits.find(h => h.id === habitId);
     if (!targetHabit) return;
 
@@ -554,12 +561,12 @@ const generateUUID = (): string => {
 
   // Computed Metrics for current viewing month
   const stats = useMemo(() => {
-    const daysInMonth = new Date(viewingYear, viewingMonth, 0).getDate();
+    const maxDayToCheck = getElapsedDaysInMonth(viewingYear, viewingMonth);
     let totalPossible = 0;
     let totalCompleted = 0;
     let daysWithAtLeastOne = 0;
 
-    for (let d = 1; d <= Math.min(daysInMonth, 30); d++) {
+    for (let d = 1; d <= maxDayToCheck; d++) {
       const dayStr = d.toString().padStart(2, '0');
       const monthStr = viewingMonth.toString().padStart(2, '0');
       const key = `${viewingYear}-${monthStr}-${dayStr}`;

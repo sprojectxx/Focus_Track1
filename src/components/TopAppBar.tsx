@@ -31,11 +31,11 @@ export const TopAppBar: React.FC = () => {
           <img src="/logo.png" alt="FocusTrack Emblem" className="w-6 h-6 object-contain invert" />
           <span className="font-geist text-xl font-bold tracking-tighter text-white">FocusTrack</span>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-1.5 sm:space-x-2">
           <a
             href="/downloads/FocusTrack-Android.apk"
             download="FocusTrack-Android.apk"
-            className="flex items-center gap-1 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 rounded font-technical text-[10px] uppercase tracking-wider transition-colors cursor-pointer"
+            className="flex items-center gap-1 px-2.5 py-1.5 min-h-[40px] bg-white/10 border border-white/30 text-white hover:bg-white/20 rounded font-technical text-[10px] uppercase tracking-wider transition-colors cursor-pointer"
             title="Download Android App (.apk)"
           >
             <span className="material-symbols-outlined text-[16px]">android</span>
@@ -43,14 +43,14 @@ export const TopAppBar: React.FC = () => {
           </a>
           <button
             onClick={() => setIsNotificationOpen(true)}
-            className="text-[#c4c7c8] hover:text-white transition-colors cursor-pointer p-1.5"
+            className="text-[#c4c7c8] hover:text-white transition-colors cursor-pointer p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded hover:bg-white/10"
             aria-label="Notifications"
           >
             <span className="material-symbols-outlined text-[22px]">notifications</span>
           </button>
           <button
             onClick={() => setIsProfileModalOpen(true)}
-            className="text-[#c4c7c8] hover:text-white transition-colors cursor-pointer p-1.5"
+            className="text-[#c4c7c8] hover:text-white transition-colors cursor-pointer p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded hover:bg-white/10"
             aria-label="Profile"
           >
             <span className="material-symbols-outlined text-[22px]">account_circle</span>
@@ -70,7 +70,7 @@ export const TopAppBar: React.FC = () => {
           <a
             href="/downloads/FocusTrack-Android.apk"
             download="FocusTrack-Android.apk"
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 rounded font-technical text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 border border-white/30 text-white hover:bg-white/20 rounded font-technical text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer"
             title="Download Android App (.apk)"
           >
             <span className="material-symbols-outlined text-[16px]">android</span>

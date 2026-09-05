@@ -1,6 +1,7 @@
 import React from 'react';
 import { useHabits } from '../context/HabitContext';
 import { HabitVisual } from './HabitVisual';
+import { getDaysInMonth, getElapsedDaysInMonth, isToday, isPast, isFuture } from '../utils/date';
 
 export const HabitDetailView: React.FC = () => {
   const {
@@ -29,15 +30,24 @@ export const HabitDetailView: React.FC = () => {
     );
   }
 
-  // Calculate detailed stats for selected habit
-  const historyEntries = Object.entries(selectedHabit.history);
-  const completedCount = historyEntries.filter(([, v]) => v).length;
-  const totalTrackedDays = 30;
-  const missedCount = Math.max(0, totalTrackedDays - completedCount);
-  const completionRate = Math.round((completedCount / totalTrackedDays) * 100);
+  // Calculate detailed stats for selected habit in viewing month
+  const daysInMonth = getDaysInMonth(viewingYear, viewingMonth);
+  const elapsedDays = getElapsedDaysInMonth(viewingYear, viewingMonth);
+  let completedCount = 0;
 
-  // Generate 4-week recent history grid (28 days)
-  const recentDays = Array.from({ length: 28 }, (_, i) => {
+  for (let d = 1; d <= elapsedDays; d++) {
+    const dStr = d.toString().padStart(2, '0');
+    const mStr = viewingMonth.toString().padStart(2, '0');
+    if (selectedHabit.history[`${viewingYear}-${mStr}-${dStr}`]) {
+      completedCount++;
+    }
+  }
+
+  const missedCount = Math.max(0, elapsedDays - completedCount);
+  const completionRate = elapsedDays > 0 ? Math.round((completedCount / elapsedDays) * 100) : 0;
+
+  // Generate recent days history grid up to daysInMonth
+  const recentDays = Array.from({ length: daysInMonth }, (_, i) => {
     const day = i + 1;
     const dayStr = day.toString().padStart(2, '0');
     const monthStr = viewingMonth.toString().padStart(2, '0');
@@ -46,8 +56,9 @@ export const HabitDetailView: React.FC = () => {
       day,
       dateKey,
       isDone: !!selectedHabit.history[dateKey],
-      isToday: day === 30,
-      isFuture: day > 30,
+      isTodayCell: isToday(dateKey),
+      isPastCell: isPast(dateKey),
+      isFutureCell: isFuture(dateKey),
     };
   });
 
@@ -197,28 +208,47 @@ export const HabitDetailView: React.FC = () => {
             ))}
 
             {recentDays.map((item, idx) => (
-              <button
-                key={idx}
-                onClick={() => toggleHabitDay(selectedHabit.id, item.dateKey)}
-                className={`aspect-square w-full rounded-xs flex items-center justify-center transition-all cursor-pointer ${
-                  item.isToday
-                    ? item.isDone
-                      ? 'bg-white text-black'
+              item.isTodayCell ? (
+                <button
+                  key={idx}
+                  onClick={() => toggleHabitDay(selectedHabit.id, item.dateKey)}
+                  className={`aspect-square w-full rounded-xs flex items-center justify-center transition-all cursor-pointer ${
+                    item.isDone
+                      ? 'bg-white text-black shadow-sm hover:bg-neutral-200'
                       : 'border-2 border-white pulse-border'
-                    : item.isDone
-                    ? 'bg-white text-black hover:bg-neutral-200'
-                    : item.isFuture
-                    ? 'border border-[#1f1f1f] opacity-30 cursor-not-allowed'
-                    : 'bg-[#181818] hover:bg-[#262626] border border-[#222]'
-                }`}
-                title={`Toggle ${item.dateKey}`}
-              >
-                {item.isDone && (
-                  <span className="material-symbols-outlined text-black text-[12px] font-bold">
-                    check
-                  </span>
-                )}
-              </button>
+                  }`}
+                  title={`Today (${item.dateKey}): ${item.isDone ? 'Click to uncheck' : 'Click to complete'}`}
+                >
+                  {item.isDone && (
+                    <span className="material-symbols-outlined text-black text-[12px] font-bold">
+                      check
+                    </span>
+                  )}
+                </button>
+              ) : item.isPastCell ? (
+                <div
+                  key={idx}
+                  className={`aspect-square w-full rounded-xs flex items-center justify-center cursor-default select-none ${
+                    item.isDone
+                      ? 'bg-[#333333] text-white'
+                      : 'bg-[#141414] border border-[#222]'
+                  }`}
+                  title={`Past date (${item.dateKey}): ${item.isDone ? 'Completed' : 'Not logged'}`}
+                >
+                  {item.isDone && (
+                    <span className="material-symbols-outlined text-[#d4d4d4] text-[12px]">
+                      check
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div
+                  key={idx}
+                  className="aspect-square w-full rounded-xs border border-[#1f1f1f] opacity-30 cursor-not-allowed flex items-center justify-center select-none"
+                  title={`Future date (${item.dateKey}): Locked`}
+                >
+                </div>
+              )
             ))}
           </div>
         </div>

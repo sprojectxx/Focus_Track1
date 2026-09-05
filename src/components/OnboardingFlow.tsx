@@ -261,7 +261,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
       {/* Mobile-Friendly Fixed Top Bar */}
       <div className="max-w-2xl mx-auto w-full flex items-center justify-between pt-2 pb-6 border-b border-[#222]">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center p-1.5 shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-white/10 border border-white/20 flex items-center justify-center p-1.5 shrink-0">
             <img src="/logo.png" alt="FocusTrack Emblem" className="w-full h-full object-contain invert" />
           </div>
           <span className="font-geist text-base sm:text-lg font-bold tracking-tight uppercase text-white truncate">
@@ -271,9 +271,9 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
 
         {/* Step Indicator */}
         <div className="flex items-center gap-2 text-xs font-technical text-slate-400 uppercase tracking-widest">
-          <span className={step === 1 ? 'text-emerald-400 font-bold' : ''}>01 DOSSIER</span>
+          <span className={step === 1 ? 'text-white font-bold' : ''}>01 DOSSIER</span>
           <span>•</span>
-          <span className={step === 2 ? 'text-emerald-400 font-bold' : ''}>02 PROTOCOLS</span>
+          <span className={step === 2 ? 'text-white font-bold' : ''}>02 PROTOCOLS</span>
         </div>
       </div>
 
@@ -294,14 +294,14 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
             {/* Profile Avatar Upload */}
             <div className="flex flex-col sm:flex-row items-center gap-6 bg-[#121212] border border-[#262626] rounded-2xl p-5">
               <div className="relative group shrink-0">
-                <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-emerald-500/40 bg-[#1e1e1e] shadow-xl">
+                <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-white/40 bg-[#1e1e1e] shadow-xl">
                   <img
                     src={avatarUrl}
                     alt="Operator Avatar"
                     className="w-full h-full object-cover grayscale contrast-125"
                   />
                 </div>
-                <label className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-emerald-500 text-black flex items-center justify-center cursor-pointer shadow-lg hover:bg-emerald-400 transition-colors">
+                <label className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-white text-black flex items-center justify-center cursor-pointer shadow-lg hover:bg-neutral-200 transition-colors">
                   <Camera className="w-4 h-4" />
                   <input
                     type="file"
@@ -313,7 +313,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
               </div>
 
               <div className="text-center sm:text-left space-y-1">
-                <span className="font-technical text-xs font-bold text-emerald-400 uppercase tracking-widest">
+                <span className="font-technical text-xs font-bold text-white uppercase tracking-widest">
                   PROFILE PHOTO & AVATAR
                 </span>
                 <p className="text-xs text-slate-400">
@@ -333,7 +333,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
                   value={name}
                   onChange={e => setName(e.target.value)}
                   placeholder="Enter name"
-                  className="w-full h-12 bg-[#121212] border border-[#262626] rounded-xl px-4 text-sm text-white focus:outline-none focus:border-emerald-500/60"
+                  className="w-full h-12 bg-[#121212] border border-[#262626] rounded-xl px-4 text-sm text-white focus:outline-none focus:border-white/60"
                 />
               </div>
 
@@ -346,7 +346,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
                   value={title}
                   onChange={e => setTitle(e.target.value)}
                   placeholder="e.g. SOFTWARE ENGINEER, ATHLETE, RESEARCHER"
-                  className="w-full h-12 bg-[#121212] border border-[#262626] rounded-xl px-4 text-sm text-white focus:outline-none focus:border-emerald-500/60"
+                  className="w-full h-12 bg-[#121212] border border-[#262626] rounded-xl px-4 text-sm text-white focus:outline-none focus:border-white/60"
                 />
               </div>
 
@@ -359,7 +359,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
                   onChange={e => setCreed(e.target.value)}
                   rows={2}
                   placeholder="Enter your personal motto or creed"
-                  className="w-full bg-[#121212] border border-[#262626] rounded-xl p-4 text-sm text-white focus:outline-none focus:border-emerald-500/60 resize-none"
+                  className="w-full bg-[#121212] border border-[#262626] rounded-xl p-4 text-sm text-white focus:outline-none focus:border-white/60 resize-none"
                 />
               </div>
             </div>
@@ -392,7 +392,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
                   key={habit.id}
                   className={`p-4 rounded-xl border transition-all ${
                     habit.selected
-                      ? 'bg-emerald-950/20 border-emerald-500/50 text-white'
+                      ? 'bg-neutral-900 border-neutral-600 text-white'
                       : 'bg-[#121212] border-[#262626] text-slate-400'
                   }`}
                 >
@@ -404,7 +404,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
                       <div
                         className={`w-6 h-6 rounded-md flex items-center justify-center border transition-colors ${
                           habit.selected
-                            ? 'bg-emerald-500 border-emerald-400 text-black'
+                            ? 'bg-white border-white text-black'
                             : 'border-slate-700 bg-transparent'
                         }`}
                       >
@@ -419,7 +419,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
                     </div>
 
                     {habit.selected && (
-                      <span className="text-[10px] font-technical text-emerald-400 uppercase tracking-widest bg-emerald-950/60 border border-emerald-800/40 px-2 py-0.5 rounded shrink-0">
+                      <span className="text-[10px] font-technical text-white uppercase tracking-widest bg-neutral-800 border border-neutral-600 px-2 py-0.5 rounded shrink-0">
                         {habit.reminderTime || '08:00'}
                       </span>
                     )}
@@ -458,7 +458,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
                               max="480"
                               value={habit.focusMinutesPerSession}
                               onChange={e => updateDraftHabit(habit.id, { focusMinutesPerSession: Math.max(1, parseInt(e.target.value, 10) || 15) })}
-                              className="w-10 bg-transparent text-center text-emerald-400 font-technical font-bold text-[11px] focus:outline-none"
+                              className="w-10 bg-transparent text-center text-white font-technical font-bold text-[11px] focus:outline-none"
                             />
                             <span className="font-technical text-[9px] text-slate-500 uppercase">m</span>
                           </div>
@@ -471,7 +471,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
                             type="time"
                             value={habit.reminderTime || '08:00'}
                             onChange={e => updateDraftHabit(habit.id, { reminderTime: e.target.value })}
-                            className="bg-[#1a1a1a] border border-[#333] text-white px-2 py-1 rounded-lg font-technical text-xs focus:outline-none focus:border-emerald-500 cursor-pointer"
+                            className="bg-[#1a1a1a] border border-[#333] text-white px-2 py-1 rounded-lg font-technical text-xs focus:outline-none focus:border-white cursor-pointer"
                           />
                         </div>
                       </div>
@@ -485,7 +485,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
                             onClick={() => setDraftHabitPresetSchedule(habit.id, 'daily')}
                             className={`px-2.5 py-1 rounded-lg text-[10px] font-technical uppercase font-bold transition-all cursor-pointer ${
                               habit.scheduleType === 'daily' || habit.scheduleDays.length === 7
-                                ? 'bg-emerald-500 text-black font-extrabold shadow'
+                                ? 'bg-white text-black font-extrabold shadow'
                                 : 'bg-[#1a1a1a] text-slate-300 border border-[#333] hover:border-white/40'
                             }`}
                           >
@@ -496,7 +496,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
                             onClick={() => setDraftHabitPresetSchedule(habit.id, 'weekdays')}
                             className={`px-2.5 py-1 rounded-lg text-[10px] font-technical uppercase font-bold transition-all cursor-pointer ${
                               habit.scheduleType === 'weekdays' || (habit.scheduleDays.length === 5 && !habit.scheduleDays.includes(5) && !habit.scheduleDays.includes(6))
-                                ? 'bg-emerald-500 text-black font-extrabold shadow'
+                                ? 'bg-white text-black font-extrabold shadow'
                                 : 'bg-[#1a1a1a] text-slate-300 border border-[#333] hover:border-white/40'
                             }`}
                           >
@@ -507,7 +507,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
                             onClick={() => setDraftHabitPresetSchedule(habit.id, 'weekends')}
                             className={`px-2.5 py-1 rounded-lg text-[10px] font-technical uppercase font-bold transition-all cursor-pointer ${
                               habit.scheduleType === 'weekends' || (habit.scheduleDays.length === 2 && habit.scheduleDays.includes(5) && habit.scheduleDays.includes(6))
-                                ? 'bg-emerald-500 text-black font-extrabold shadow'
+                                ? 'bg-white text-black font-extrabold shadow'
                                 : 'bg-[#1a1a1a] text-slate-300 border border-[#333] hover:border-white/40'
                             }`}
                           >
@@ -550,11 +550,11 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
                 value={customHabitName}
                 onChange={e => setCustomHabitName(e.target.value)}
                 placeholder="Add custom habit (e.g. Journaling, Water Intake)"
-                className="flex-1 h-12 bg-[#121212] border border-[#262626] rounded-xl px-4 text-sm text-white focus:outline-none focus:border-emerald-500/60"
+                className="flex-1 h-12 bg-[#121212] border border-[#262626] rounded-xl px-4 text-sm text-white focus:outline-none focus:border-white/60"
               />
               <button
                 onClick={handleAddCustomHabit}
-                className="h-12 px-5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-technical text-xs font-bold uppercase rounded-xl flex items-center gap-2 hover:bg-emerald-500/20 cursor-pointer"
+                className="h-12 px-5 bg-white/10 border border-white/30 text-white font-technical text-xs font-bold uppercase rounded-xl flex items-center gap-2 hover:bg-white/20 cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 <span>ADD</span>

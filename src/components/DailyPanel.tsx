@@ -1,6 +1,7 @@
 import React from 'react';
 import { useHabits } from '../context/HabitContext';
 import { HabitVisual } from './HabitVisual';
+import { isToday } from '../utils/date';
 
 export const DailyPanel: React.FC = () => {
   const {
@@ -23,6 +24,7 @@ export const DailyPanel: React.FC = () => {
   const formattedMonthShort = monthShortNames[dateObj.getMonth()];
   const formattedDayName = dayFullNames[dateObj.getDay()];
   const formattedDayNumber = dayStr;
+  const isSelectedToday = isToday(selectedDateStr);
 
   // Calculate day metrics
   let completedHabits = 0;
@@ -59,9 +61,16 @@ export const DailyPanel: React.FC = () => {
               <span className="text-3xl font-extrabold text-white tracking-tighter block font-geist">
                 {formattedMonthShort} {formattedDayNumber}
               </span>
-              <span className="font-technical text-xs text-[#a3a3a3] uppercase tracking-widest">
-                {formattedDayName}
-              </span>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="font-technical text-xs text-[#a3a3a3] uppercase tracking-widest">
+                  {formattedDayName}
+                </span>
+                {!isSelectedToday && (
+                  <span className="font-technical text-[9px] bg-[#222] text-[#aaa] border border-[#333] px-1.5 py-0.5 rounded uppercase">
+                    Read-Only
+                  </span>
+                )}
+              </div>
             </div>
             <button
               onClick={() => setIsDailyPanelOpen(false)}
@@ -84,8 +93,10 @@ export const DailyPanel: React.FC = () => {
                 return (
                   <div
                     key={habit.id}
-                    onClick={() => toggleHabitDay(habit.id, selectedDateStr)}
-                    className="flex items-center justify-between p-3.5 border border-[#262626] rounded hover:border-neutral-500 transition-colors cursor-pointer bg-[#0a0a0a] group"
+                    onClick={() => isSelectedToday && toggleHabitDay(habit.id, selectedDateStr)}
+                    className={`flex items-center justify-between p-3.5 border border-[#262626] rounded transition-colors bg-[#0a0a0a] group ${
+                      isSelectedToday ? 'hover:border-neutral-500 cursor-pointer' : 'cursor-default opacity-85'
+                    }`}
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-6 h-6 flex items-center justify-center">
@@ -100,12 +111,13 @@ export const DailyPanel: React.FC = () => {
                       </span>
                     </div>
 
-                    <button
-                      type="button"
+                    <div
                       className={`w-5 h-5 rounded-xs flex items-center justify-center transition-all ${
                         isChecked
                           ? 'bg-white text-black font-bold'
-                          : 'border border-[#444] bg-[#141414] group-hover:border-white'
+                          : isSelectedToday
+                          ? 'border border-[#444] bg-[#141414] group-hover:border-white'
+                          : 'border border-[#222] bg-[#0d0d0d]'
                       }`}
                     >
                       {isChecked && (
@@ -113,7 +125,7 @@ export const DailyPanel: React.FC = () => {
                           check
                         </span>
                       )}
-                    </button>
+                    </div>
                   </div>
                 );
               })}

@@ -49,23 +49,24 @@ export const NotificationsModal: React.FC = () => {
       ></div>
 
       {/* Popover */}
-      <div className="relative w-full max-w-sm bg-[#121212] border border-[#262626] rounded shadow-2xl z-10 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-        <div className="p-4 border-b border-[#262626] flex justify-between items-center bg-[#0a0a0a]">
+      <div className="relative w-full max-w-sm bg-[#121212] border border-[#262626] rounded shadow-2xl z-10 overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[85vh] flex flex-col my-auto">
+        <div className="p-4 border-b border-[#262626] flex justify-between items-center bg-[#0a0a0a] shrink-0">
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-amber-400 text-[18px]">notifications_active</span>
+            <span className="material-symbols-outlined text-white text-[18px]">notifications_active</span>
             <span className="font-technical text-xs font-bold text-white uppercase tracking-widest">
               Active Alerts & 10-Min Warnings
             </span>
           </div>
           <button
             onClick={() => setIsNotificationOpen(false)}
-            className="text-[#737373] hover:text-white p-1 rounded hover:bg-[#1a1a1a] transition-colors cursor-pointer"
+            className="text-[#737373] hover:text-white p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded hover:bg-[#1a1a1a] transition-colors cursor-pointer"
+            aria-label="Close modal"
           >
             <span className="material-symbols-outlined text-[18px]">close</span>
           </button>
         </div>
 
-        <div className="p-3 space-y-2 max-h-[70vh] overflow-y-auto custom-scrollbar">
+        <div className="p-3 space-y-2 max-h-[70vh] overflow-y-auto custom-scrollbar flex-1">
           {reminderItems.length === 0 ? (
             <p className="text-xs text-[#737373] p-4 text-center">No active reminders or 10-min alerts configured.</p>
           ) : (
@@ -74,7 +75,7 @@ export const NotificationsModal: React.FC = () => {
                 key={idx}
                 className={`p-3 rounded flex items-start gap-3 border transition-colors ${
                   rem.isAdvance
-                    ? 'bg-amber-950/30 border-amber-800/40 text-amber-200'
+                    ? 'bg-[#1c1c1c] border-white/30 text-white'
                     : 'bg-[#0a0a0a] border-[#262626] text-white hover:border-[#444]'
                 }`}
               >
@@ -86,7 +87,7 @@ export const NotificationsModal: React.FC = () => {
                     <h4 className="font-geist text-xs font-bold truncate">{rem.title}</h4>
                     <span
                       className={`font-technical text-[9px] px-1.5 py-0.5 rounded font-bold shrink-0 ${
-                        rem.isAdvance ? 'bg-amber-400 text-black' : 'bg-white text-black'
+                        rem.isAdvance ? 'bg-white text-black' : 'bg-neutral-800 text-white border border-[#444]'
                       }`}
                     >
                       {rem.time}
@@ -103,7 +104,7 @@ export const NotificationsModal: React.FC = () => {
           )}
 
           <div className="p-3 bg-[#171717] rounded text-center border border-[#262626]">
-            <p className="font-technical text-[10px] text-emerald-400 uppercase tracking-wider">
+            <p className="font-technical text-[10px] text-neutral-400 uppercase tracking-wider">
               Firebase & Web Push • 10-Min Pre-Alert System
             </p>
           </div>

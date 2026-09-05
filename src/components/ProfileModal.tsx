@@ -26,14 +26,15 @@ export const ProfileModal: React.FC = () => {
       ></div>
 
       {/* Modal Box */}
-      <div className="relative w-full max-w-md bg-[#0e0e0e] border border-[#444748] rounded shadow-2xl z-10 p-6 animate-in zoom-in-95 duration-150">
-        <div className="flex justify-between items-start mb-6">
+      <div className="relative w-full max-w-md bg-[#0e0e0e] border border-[#444748] rounded shadow-2xl z-10 p-5 sm:p-6 animate-in zoom-in-95 duration-150 max-h-[85vh] sm:max-h-[90vh] overflow-y-auto custom-scrollbar my-auto">
+        <div className="flex justify-between items-center mb-6">
           <span className="font-technical text-[10px] text-[#8e9192] uppercase tracking-widest">
             OPERATOR DOSSIER
           </span>
           <button
             onClick={() => setIsProfileModalOpen(false)}
-            className="text-[#8e9192] hover:text-white p-1 rounded hover:bg-[#1f1f1f] transition-colors cursor-pointer"
+            className="text-[#8e9192] hover:text-white p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded hover:bg-[#1f1f1f] transition-colors cursor-pointer"
+            aria-label="Close modal"
           >
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
@@ -51,7 +52,7 @@ export const ProfileModal: React.FC = () => {
             {displayName}
           </h3>
           {displayEmail && (
-            <p className="text-xs text-emerald-400 font-mono tracking-wide mt-0.5">
+            <p className="text-xs text-neutral-400 font-mono tracking-wide mt-0.5">
               {displayEmail}
             </p>
           )}
@@ -89,13 +90,13 @@ export const ProfileModal: React.FC = () => {
               setIsProfileModalOpen(false);
               setCurrentTab('settings');
             }}
-            className="w-full py-2.5 bg-white text-black font-technical text-xs font-bold uppercase tracking-widest rounded hover:bg-neutral-200 transition-colors cursor-pointer"
+            className="w-full py-3 min-h-[44px] bg-white text-black font-technical text-xs font-bold uppercase tracking-widest rounded hover:bg-neutral-200 transition-colors cursor-pointer flex items-center justify-center"
           >
             System Settings
           </button>
           <button
             onClick={handleSignOut}
-            className="w-full py-2.5 bg-red-950/40 text-red-400 border border-red-900/50 font-technical text-xs font-bold uppercase tracking-widest rounded hover:bg-red-900/50 transition-colors cursor-pointer"
+            className="w-full py-3 min-h-[44px] bg-red-950/40 text-red-400 border border-red-900/50 font-technical text-xs font-bold uppercase tracking-widest rounded hover:bg-red-900/50 transition-colors cursor-pointer flex items-center justify-center"
           >
             Sign Out
           </button>
