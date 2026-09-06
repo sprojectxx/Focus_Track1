@@ -69,6 +69,9 @@ export async function cancelHabitReminder(habitId: string) {
 export async function scheduleHabitReminder(habit: Habit): Promise<void> {
   await cancelHabitReminder(habit.id);
 
+  // M5 targets native Android first. iOS remote/local scheduling can be added without
+  // changing the habit data model in a later platform pass.
+  if (Platform.OS !== 'android') return;
   if (!habit.reminderEnabled || habit.isArchived) return;
 
   const time = parseTime(habit.reminderTime);
@@ -91,7 +94,7 @@ export async function scheduleHabitReminder(habit: Habit): Promise<void> {
         weekday: androidWeekday(dayIndex),
         hour: time.hour,
         minute: time.minute,
-        ...(Platform.OS === 'android' ? { channelId: HABIT_REMINDER_CHANNEL } : {}),
+        channelId: HABIT_REMINDER_CHANNEL,
       },
     });
     ids.push(id);
