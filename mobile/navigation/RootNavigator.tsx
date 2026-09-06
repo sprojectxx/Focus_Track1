@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { Session } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
+import { LoadingState } from '../components/LoadingState';
 import { LoginScreen } from '../screens/LoginScreen';
 import { TabNavigator } from './TabNavigator';
 import { ArchiveScreen } from '../screens/ArchiveScreen';
@@ -16,8 +19,40 @@ export type RootStackParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export const RootNavigator: React.FC = () => {
-  // Placeholder auth state for M1. M2 will connect real Supabase Auth.
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    // 1. Check current session on startup
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      if (isMounted) {
+        setSession(initialSession);
+        setLoading(false);
+      }
+    });
+
+    // 2. Subscribe to Auth State changes (SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED, etc.)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+      if (isMounted) {
+        setSession(currentSession);
+        setLoading(false);
+      }
+    });
+
+    // 3. Cleanup subscription on unmount
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  if (loading) {
+    return <LoadingState message="Initializing FocusTrack session..." />;
+  }
 
   return (
     <Stack.Navigator
@@ -35,9 +70,15 @@ export const RootNavigator: React.FC = () => {
         },
       }}
     >
-      {!isAuthenticated ? (
+      {!session ? (
         <Stack.Screen name="Login" options={{ headerShown: false }}>
-          {() => <LoginScreen onLoginSuccess={() => setIsAuthenticated(true)} />}
+          {() => (
+            <LoginScreen
+              onLoginSuccess={() => {
+                // Development session sync helper for M1 until M2 OAuth implementation
+              }}
+            />
+          )}
         </Stack.Screen>
       ) : (
         <>
@@ -46,7 +87,9 @@ export const RootNavigator: React.FC = () => {
               <TabNavigator
                 onNavigateToArchive={() => navigation.navigate('Archive')}
                 onNavigateToDetail={(id) => navigation.navigate('HabitDetail', { habitId: id })}
-                onSignOut={() => setIsAuthenticated(false)}
+                onSignOut={() => {
+                  supabase.auth.signOut();
+                }}
               />
             )}
           </Stack.Screen>
