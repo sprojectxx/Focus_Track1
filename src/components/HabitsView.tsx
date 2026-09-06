@@ -6,6 +6,8 @@ import { HabitVisual } from './HabitVisual';
 export const HabitsView: React.FC = () => {
   const {
     activeHabits,
+    archivedHabits,
+    setCurrentTab,
     setSelectedHabitId,
     setIsCreateModalOpen,
     setEditingHabit,
@@ -84,17 +86,28 @@ export const HabitsView: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            setEditingHabit(null);
-            setIsCreateModalOpen(true);
-          }}
-          className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 min-h-[44px] bg-white text-black hover:bg-neutral-200 transition-all rounded font-technical text-xs font-bold uppercase tracking-widest cursor-pointer shadow-lg active:scale-95"
-          aria-label="Add custom habit"
-        >
-          <span className="material-symbols-outlined text-[17px]">add</span>
-          <span>Add Custom Habit</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+          <button
+            onClick={() => setCurrentTab('archive')}
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2.5 min-h-[44px] border border-[#333] hover:border-white text-[#a3a3a3] hover:text-white rounded font-technical text-xs uppercase tracking-widest bg-[#141414] transition-colors cursor-pointer"
+            title="View Archived Protocols"
+            aria-label="View Archived Protocols"
+          >
+            <span className="material-symbols-outlined text-[17px]">archive</span>
+            <span>Archived ({archivedHabits.length})</span>
+          </button>
+          <button
+            onClick={() => {
+              setEditingHabit(null);
+              setIsCreateModalOpen(true);
+            }}
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 min-h-[44px] bg-white text-black hover:bg-neutral-200 transition-all rounded font-technical text-xs font-bold uppercase tracking-widest cursor-pointer shadow-lg active:scale-95"
+            aria-label="Add custom habit"
+          >
+            <span className="material-symbols-outlined text-[17px]">add</span>
+            <span>Add Custom Habit</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter & Search Bar */}

@@ -3,6 +3,7 @@ import { useHabits } from '../context/HabitContext';
 import { PriorityLevel } from '../types';
 import { MONOCHROME_ICONS, MONOCHROME_ICON_CATEGORIES } from '../data/monochromeIcons';
 import { HabitVisual } from './HabitVisual';
+import { PREDEFINED_DOMAINS } from '../data/habitDomains';
 
 export const CreateHabitModal: React.FC = () => {
   const {
@@ -16,7 +17,8 @@ export const CreateHabitModal: React.FC = () => {
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('Technology');
+  const [selectedDomain, setSelectedDomain] = useState<string>('Workout');
+  const [customDomain, setCustomDomain] = useState<string>('');
   const [priority, setPriority] = useState<PriorityLevel>('high');
   const [targetTime, setTargetTime] = useState('Morning');
   
@@ -39,7 +41,14 @@ export const CreateHabitModal: React.FC = () => {
     if (editingHabit) {
       setName(editingHabit.name);
       setDescription(editingHabit.description || '');
-      setCategory(editingHabit.category || 'General');
+      const existingCat = editingHabit.category || 'Workout';
+      if ((PREDEFINED_DOMAINS as readonly string[]).includes(existingCat)) {
+        setSelectedDomain(existingCat);
+        setCustomDomain('');
+      } else {
+        setSelectedDomain('Custom');
+        setCustomDomain(existingCat);
+      }
       setPriority(editingHabit.priority);
       setSelectedIcon(editingHabit.icon || 'terminal');
       setCustomImage(editingHabit.customImage);
@@ -52,7 +61,8 @@ export const CreateHabitModal: React.FC = () => {
     } else {
       setName('');
       setDescription('');
-      setCategory('Technology');
+      setSelectedDomain('Workout');
+      setCustomDomain('');
       setPriority('high');
       setSelectedIcon('terminal');
       setCustomImage(undefined);
@@ -96,25 +106,60 @@ export const CreateHabitModal: React.FC = () => {
     else if (type === 'weekends') setScheduleDays([5, 6]);
   };
 
-  // Image Upload Handler
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Image Upload Handler with Canvas Compression (< 50KB base64)
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check size limit (max 3MB)
-    if (file.size > 3 * 1024 * 1024) {
-      alert('Image file is too large. Please choose an image under 3MB.');
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image file is too large. Please choose an image under 5MB.');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        setCustomImage(reader.result);
-        setVisualMode('upload');
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      const compressedDataUrl = await compressImageToMonochromeBase64(file, 256);
+      setCustomImage(compressedDataUrl);
+      setVisualMode('upload');
+    } catch {
+      alert('Failed to process image file.');
+    }
+  };
+
+  const compressImageToMonochromeBase64 = (file: File, maxDim = 256): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          if (width > height) {
+            if (width > maxDim) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            }
+          } else {
+            if (height > maxDim) {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', 0.8));
+          } else {
+            resolve(e.target?.result as string);
+          }
+        };
+        img.onerror = () => reject('Failed to load image');
+        img.src = e.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    });
   };
 
   const removeUploadedImage = () => {
@@ -129,11 +174,13 @@ export const CreateHabitModal: React.FC = () => {
     e.preventDefault();
     if (!name.trim()) return;
 
+    const finalCategory = selectedDomain === 'Custom' ? (customDomain.trim() || 'General') : selectedDomain;
+
     const habitPayload = {
       name: name.trim(),
       description: description.trim(),
-      category: category.trim() || 'General',
-      categoryLabel: category.trim() || 'General',
+      category: finalCategory,
+      categoryLabel: finalCategory,
       priority,
       icon: selectedIcon,
       customImage: visualMode === 'upload' ? customImage : undefined,
@@ -403,13 +450,28 @@ export const CreateHabitModal: React.FC = () => {
               <label className="font-technical text-[10px] text-[#8e9192] uppercase tracking-widest block mb-1.5">
                 Category / Domain
               </label>
-              <input
-                type="text"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                placeholder="e.g. Technology, Gym, Work..."
-                className="w-full bg-[#141414] border border-[#333] rounded px-3 py-2.5 min-h-[44px] text-white text-xs focus:outline-none focus:border-white"
-              />
+              <select
+                value={selectedDomain}
+                onChange={(e) => setSelectedDomain(e.target.value)}
+                className="w-full bg-[#141414] border border-[#333] rounded px-3 py-2.5 min-h-[44px] text-white text-xs focus:outline-none focus:border-white cursor-pointer"
+              >
+                {PREDEFINED_DOMAINS.map((dom) => (
+                  <option key={dom} value={dom}>
+                    {dom}
+                  </option>
+                ))}
+                <option value="Custom">Custom Domain...</option>
+              </select>
+
+              {selectedDomain === 'Custom' && (
+                <input
+                  type="text"
+                  value={customDomain}
+                  onChange={(e) => setCustomDomain(e.target.value)}
+                  placeholder="Enter custom domain..."
+                  className="w-full bg-[#0a0a0a] border border-[#333] rounded px-3 py-2 min-h-[40px] text-white text-xs mt-2 focus:outline-none focus:border-white"
+                />
+              )}
             </div>
 
             <div>

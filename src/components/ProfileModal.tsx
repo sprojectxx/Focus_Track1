@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 export const ProfileModal: React.FC = () => {
   const { isProfileModalOpen, setIsProfileModalOpen, userProfile, stats, setCurrentTab } = useHabits();
   const { signOut, user } = useAuth();
+  const [imgError, setImgError] = React.useState(false);
 
   if (!isProfileModalOpen) return null;
 
@@ -41,12 +42,17 @@ export const ProfileModal: React.FC = () => {
         </div>
 
         <div className="flex flex-col items-center text-center mb-6">
-          <div className="w-24 h-24 rounded-full bg-[#1b1b1b] border-2 border-white overflow-hidden mb-4 shadow-xl">
-            <img
-              src={displayAvatar}
-              alt={displayName}
-              className="w-full h-full object-cover grayscale contrast-125"
-            />
+          <div className="w-24 h-24 rounded-full bg-[#1b1b1b] border-2 border-white overflow-hidden mb-4 shadow-xl flex items-center justify-center">
+            {!imgError && displayAvatar ? (
+              <img
+                src={displayAvatar}
+                alt={displayName}
+                onError={() => setImgError(true)}
+                className="w-full h-full object-cover grayscale contrast-125"
+              />
+            ) : (
+              <span className="material-symbols-outlined text-[54px] text-white">account_circle</span>
+            )}
           </div>
           <h3 className="font-geist text-xl font-bold text-white uppercase tracking-tight">
             {displayName}

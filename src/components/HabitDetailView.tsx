@@ -1,7 +1,8 @@
 import React from 'react';
 import { useHabits } from '../context/HabitContext';
 import { HabitVisual } from './HabitVisual';
-import { getDaysInMonth, getElapsedDaysInMonth, isToday, isPast, isFuture } from '../utils/date';
+import { getDaysInMonth, isToday, isPast, isFuture } from '../utils/date';
+import { calculateHabitStats } from '../utils/habitStats';
 
 export const HabitDetailView: React.FC = () => {
   const {
@@ -30,21 +31,9 @@ export const HabitDetailView: React.FC = () => {
     );
   }
 
-  // Calculate detailed stats for selected habit in viewing month
+  // Calculate detailed stats dynamically using central calculation engine
+  const stats = calculateHabitStats(selectedHabit, viewingYear, viewingMonth);
   const daysInMonth = getDaysInMonth(viewingYear, viewingMonth);
-  const elapsedDays = getElapsedDaysInMonth(viewingYear, viewingMonth);
-  let completedCount = 0;
-
-  for (let d = 1; d <= elapsedDays; d++) {
-    const dStr = d.toString().padStart(2, '0');
-    const mStr = viewingMonth.toString().padStart(2, '0');
-    if (selectedHabit.history[`${viewingYear}-${mStr}-${dStr}`]) {
-      completedCount++;
-    }
-  }
-
-  const missedCount = Math.max(0, elapsedDays - completedCount);
-  const completionRate = elapsedDays > 0 ? Math.round((completedCount / elapsedDays) * 100) : 0;
 
   // Generate recent days history grid up to daysInMonth
   const recentDays = Array.from({ length: daysInMonth }, (_, i) => {
@@ -61,18 +50,6 @@ export const HabitDetailView: React.FC = () => {
       isFutureCell: isFuture(dateKey),
     };
   });
-
-  // Performance trajectory data
-  const trajectoryBars = [
-    { week: 'W1', value: 40, height: '40%' },
-    { week: 'W2', value: 60, height: '60%' },
-    { week: 'W3', value: 45, height: '45%' },
-    { week: 'W4', value: 80, height: '80%' },
-    { week: 'W5', value: 70, height: '70%' },
-    { week: 'W6', value: 90, height: '90%' },
-    { week: 'W7', value: 100, height: '100%' },
-    { week: 'W8', value: 85, height: '85%' },
-  ];
 
   return (
     <div className="flex-1 p-4 md:p-8 lg:p-12 max-w-[1440px] mx-auto w-full flex flex-col pb-24">
@@ -133,14 +110,14 @@ export const HabitDetailView: React.FC = () => {
           </div>
           <div className="flex items-baseline gap-1">
             <span className="font-geist font-bold text-white text-3xl">
-              {completionRate || 87}
+              {stats.completionRate}
             </span>
             <span className="text-[#8e9192] text-sm">%</span>
           </div>
           <div className="w-full bg-[#262626] h-[2px] mt-3 overflow-hidden rounded-full">
             <div
               className="bg-white h-full transition-all duration-500"
-              style={{ width: `${completionRate || 87}%` }}
+              style={{ width: `${stats.completionRate}%` }}
             ></div>
           </div>
         </div>
@@ -150,7 +127,7 @@ export const HabitDetailView: React.FC = () => {
             Completed
           </div>
           <div className="font-geist font-bold text-white text-3xl">
-            {completedCount || 26}
+            {stats.completedCount}
           </div>
           <div className="text-[#737373] text-xs mt-3">Total logs recorded</div>
         </div>
@@ -160,9 +137,9 @@ export const HabitDetailView: React.FC = () => {
             Missed Days
           </div>
           <div className="font-geist font-bold text-white text-3xl">
-            {missedCount || 4}
+            {stats.missedCount}
           </div>
-          <div className="text-[#737373] text-xs mt-3">Days skipped</div>
+          <div className="text-[#737373] text-xs mt-3">Scheduled missed</div>
         </div>
 
         <div className="bg-[#121212] border border-[#262626] p-5 flex flex-col justify-between rounded">
@@ -170,7 +147,7 @@ export const HabitDetailView: React.FC = () => {
             Current Streak
           </div>
           <div className="flex items-baseline gap-1">
-            <span className="font-geist font-bold text-white text-3xl">12</span>
+            <span className="font-geist font-bold text-white text-3xl">{stats.currentStreak}</span>
             <span className="text-[#8e9192] text-sm">Days</span>
           </div>
           <div className="text-[#737373] text-xs mt-3 font-technical uppercase">Active run</div>
@@ -181,7 +158,7 @@ export const HabitDetailView: React.FC = () => {
             Best Streak
           </div>
           <div className="flex items-baseline gap-1">
-            <span className="font-geist font-bold text-white text-3xl">14</span>
+            <span className="font-geist font-bold text-white text-3xl">{stats.bestStreak}</span>
             <span className="text-[#8e9192] text-sm">Days</span>
           </div>
           <div className="text-[#737373] text-xs mt-3">All-time record</div>
@@ -264,7 +241,7 @@ export const HabitDetailView: React.FC = () => {
             <div className="absolute inset-x-4 top-0 border-t border-[#262626] border-dashed w-[calc(100%-16px)]"></div>
             <div className="absolute inset-x-4 top-1/2 border-t border-[#262626] border-dashed w-[calc(100%-16px)]"></div>
 
-            {trajectoryBars.map((bar, idx) => {
+            {stats.trajectoryBars.map((bar, idx) => {
               const isHigh = bar.value >= 80;
               return (
                 <div
@@ -273,12 +250,16 @@ export const HabitDetailView: React.FC = () => {
                 >
                   <div
                     className={`w-full rounded-t-xs transition-all duration-300 ${
-                      isHigh ? 'bg-white' : 'bg-[#222] hover:bg-[#333]'
+                      bar.isEmpty
+                        ? 'bg-[#181818] border border-[#262626]'
+                        : isHigh
+                        ? 'bg-white'
+                        : 'bg-[#333] hover:bg-[#444]'
                     }`}
                     style={{ height: bar.height }}
                   >
                     <div className="opacity-0 group-hover:opacity-100 absolute -top-7 left-1/2 transform -translate-x-1/2 bg-[#1b1b1b] border border-[#444] px-1.5 py-0.5 rounded text-[9px] font-technical text-white whitespace-nowrap pointer-events-none transition-opacity">
-                      {bar.value}%
+                      {bar.isEmpty ? 'NO DATA' : `${bar.value}%`}
                     </div>
                   </div>
                 </div>

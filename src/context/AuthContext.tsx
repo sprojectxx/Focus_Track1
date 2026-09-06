@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
+import { Capacitor } from '@capacitor/core';
+import { App as CapacitorApp } from '@capacitor/app';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 
 interface AuthContextType {
@@ -13,6 +15,8 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export const CANONICAL_ANDROID_REDIRECT = 'com.focustrack.app://auth/callback';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -48,8 +52,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
     });
 
+    // Register Capacitor Native Deep-Link URL Listener for Android OAuth return
+    let appUrlListener: any = null;
+    if (Capacitor.isNativePlatform()) {
+      appUrlListener = CapacitorApp.addListener('appUrlOpen', async ({ url }) => {
+        if (url && (url.includes('com.focustrack.app') || url.includes('auth/callback'))) {
+          try {
+            // Parse URL parameters for PKCE code or access tokens
+            const parsedUrl = new URL(url.replace('#', '?'));
+            const code = parsedUrl.searchParams.get('code');
+
+            if (code) {
+              const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+              if (data?.session) {
+                setSession(data.session);
+                setUser(data.session.user);
+              } else if (error) {
+                console.error('[OAuth DeepLink] Code exchange error:', error.message);
+              }
+            } else {
+              // Refresh session state directly from Supabase client
+              const { data: { session: currentSession } } = await supabase.auth.getSession();
+              if (currentSession) {
+                setSession(currentSession);
+                setUser(currentSession.user);
+              }
+            }
+          } catch (err) {
+            console.error('[OAuth DeepLink] Failed to parse callback URL:', err);
+          } finally {
+            setLoading(false);
+          }
+        }
+      });
+    }
+
     return () => {
       subscription.unsubscribe();
+      if (appUrlListener && typeof appUrlListener.remove === 'function') {
+        appUrlListener.remove();
+      }
     };
   }, []);
 
@@ -58,11 +100,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       demoLogin();
       return;
     }
-    
+
+    // Platform-aware redirect: Native Android uses deep link scheme, Web uses window origin
+    const redirectUrl = Capacitor.isNativePlatform()
+      ? CANONICAL_ANDROID_REDIRECT
+      : `${window.location.origin}`;
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}`,
+        redirectTo: redirectUrl,
+        skipBrowserRedirect: false,
       },
     });
 
