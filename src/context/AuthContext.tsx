@@ -1,8 +1,9 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
+import { syncUserTimeZone } from '../lib/profileService';
 
 interface AuthContextType {
   user: User | null;
@@ -14,8 +15,7 @@ interface AuthContextType {
   demoLogin: () => void;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
+const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
 export const CANONICAL_ANDROID_REDIRECT = 'com.focustrack.app://auth/callback';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -25,57 +25,58 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
-      // Check local storage demo auth
       const savedDemo = localStorage.getItem('focustrack_demo_user');
       if (savedDemo) {
-        try {
-          setUser(JSON.parse(savedDemo));
-        } catch {
-          // ignore
-        }
+        try { setUser(JSON.parse(savedDemo)); } catch { /* ignore */ }
       }
       setLoading(false);
       return;
     }
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const hydrateSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
       setUser(session?.user ?? null);
+      if (session?.user) {
+        try { await syncUserTimeZone(session.user.id); }
+        catch (error) { console.error('[Auth] Timezone sync error:', error); }
+      }
+      setLoading(false);
+    };
+
+    hydrateSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+      if (nextSession?.user) {
+        syncUserTimeZone(nextSession.user.id).catch((error) =>
+          console.error('[Auth] Timezone sync error:', error)
+        );
+      }
       setLoading(false);
     });
 
-    // Listen to Auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    // Register Capacitor Native Deep-Link URL Listener for Android OAuth return
     let appUrlListener: any = null;
     if (Capacitor.isNativePlatform()) {
       appUrlListener = CapacitorApp.addListener('appUrlOpen', async ({ url }) => {
         if (url && (url.includes('com.focustrack.app') || url.includes('auth/callback'))) {
           try {
-            // Parse URL parameters for PKCE code or access tokens
             const parsedUrl = new URL(url.replace('#', '?'));
             const code = parsedUrl.searchParams.get('code');
-
             if (code) {
               const { data, error } = await supabase.auth.exchangeCodeForSession(code);
               if (data?.session) {
                 setSession(data.session);
                 setUser(data.session.user);
-              } else if (error) {
-                console.error('[OAuth DeepLink] Code exchange error:', error.message);
-              }
+                await syncUserTimeZone(data.session.user.id);
+              } else if (error) console.error('[OAuth DeepLink] Code exchange error:', error.message);
             } else {
-              // Refresh session state directly from Supabase client
               const { data: { session: currentSession } } = await supabase.auth.getSession();
               if (currentSession) {
                 setSession(currentSession);
                 setUser(currentSession.user);
+                await syncUserTimeZone(currentSession.user.id);
               }
             }
           } catch (err) {
@@ -89,31 +90,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return () => {
       subscription.unsubscribe();
-      if (appUrlListener && typeof appUrlListener.remove === 'function') {
-        appUrlListener.remove();
-      }
+      if (appUrlListener && typeof appUrlListener.remove === 'function') appUrlListener.remove();
     };
   }, []);
 
   const signInWithGoogle = async () => {
-    if (!isSupabaseConfigured) {
-      demoLogin();
-      return;
-    }
-
-    // Platform-aware redirect: Native Android uses deep link scheme, Web uses window origin
-    const redirectUrl = Capacitor.isNativePlatform()
-      ? CANONICAL_ANDROID_REDIRECT
-      : `${window.location.origin}`;
-
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: redirectUrl,
-        skipBrowserRedirect: false,
-      },
-    });
-
+    if (!isSupabaseConfigured) { demoLogin(); return; }
+    const redirectUrl = Capacitor.isNativePlatform() ? CANONICAL_ANDROID_REDIRECT : `${window.location.origin}`;
+    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: redirectUrl, skipBrowserRedirect: false } });
     if (error) {
       console.error('Google Sign-In Error:', error.message);
       if (error.message.includes('provider is not enabled') || error.message.includes('Unsupported provider')) {
@@ -123,50 +107,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-
   const demoLogin = () => {
-    const mockUser: Partial<User> = {
-      id: 'demo-google-user-123',
-      email: 'alex.focus@gmail.com',
-      user_metadata: {
-        full_name: 'Alex Vance',
-        avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256'
-      }
-    };
+    const mockUser: Partial<User> = { id: 'demo-google-user-123', email: 'alex.focus@gmail.com', user_metadata: { full_name: 'Alex Vance', avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256' } };
     localStorage.setItem('focustrack_demo_user', JSON.stringify(mockUser));
     setUser(mockUser as User);
   };
 
   const signOut = async () => {
-    if (isSupabaseConfigured) {
-      await supabase.auth.signOut();
-    }
+    if (isSupabaseConfigured) await supabase.auth.signOut();
     localStorage.removeItem('focustrack_demo_user');
     setUser(null);
     setSession(null);
   };
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        session,
-        loading,
-        isConfigured: isSupabaseConfigured,
-        signInWithGoogle,
-        signOut,
-        demoLogin,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={{ user, session, loading, isConfigured: isSupabaseConfigured, signInWithGoogle, signOut, demoLogin }}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  const context = React.useContext(AuthContext);
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };
