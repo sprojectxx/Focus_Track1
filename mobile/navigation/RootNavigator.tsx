@@ -71,15 +71,11 @@ export const RootNavigator: React.FC = () => {
       }}
     >
       {!session ? (
-        <Stack.Screen name="Login" options={{ headerShown: false }}>
-          {() => (
-            <LoginScreen
-              onLoginSuccess={() => {
-                // Development session sync helper for M1 until M2 OAuth implementation
-              }}
-            />
-          )}
-        </Stack.Screen>
+        <Stack.Screen
+          name="Login"
+          component={LoginScreen}
+          options={{ headerShown: false }}
+        />
       ) : (
         <>
           <Stack.Screen name="MainTabs" options={{ headerShown: false }}>
