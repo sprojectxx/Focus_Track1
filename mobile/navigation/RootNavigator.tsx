@@ -8,6 +8,7 @@ import { LoginScreen } from '../screens/LoginScreen';
 import { TabNavigator } from './TabNavigator';
 import { ArchiveScreen } from '../screens/ArchiveScreen';
 import { HabitDetailScreen } from '../screens/HabitDetailScreen';
+import { HabitProvider } from '../context/HabitContext';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -77,30 +78,35 @@ export const RootNavigator: React.FC = () => {
           options={{ headerShown: false }}
         />
       ) : (
-        <>
+        <Stack.Group>
           <Stack.Screen name="MainTabs" options={{ headerShown: false }}>
             {({ navigation }) => (
-              <TabNavigator
-                onNavigateToArchive={() => navigation.navigate('Archive')}
-                onNavigateToDetail={(id) => navigation.navigate('HabitDetail', { habitId: id })}
-                onSignOut={() => {
-                  supabase.auth.signOut();
-                }}
-              />
+              <HabitProvider>
+                <TabNavigator
+                  onNavigateToArchive={() => navigation.navigate('Archive')}
+                  onNavigateToDetail={(id) => navigation.navigate('HabitDetail', { habitId: id })}
+                  onSignOut={() => {
+                    supabase.auth.signOut();
+                  }}
+                />
+              </HabitProvider>
             )}
           </Stack.Screen>
-          <Stack.Screen
-            name="Archive"
-            component={ArchiveScreen}
-            options={{ title: 'ARCHIVED PROTOCOLS' }}
-          />
-          <Stack.Screen
-            name="HabitDetail"
-            options={{ title: 'HABIT PROTOCOL' }}
-          >
-            {({ route }) => <HabitDetailScreen habitId={route.params?.habitId} />}
+          <Stack.Screen name="Archive" options={{ title: 'ARCHIVED PROTOCOLS' }}>
+            {() => (
+              <HabitProvider>
+                <ArchiveScreen />
+              </HabitProvider>
+            )}
           </Stack.Screen>
-        </>
+          <Stack.Screen name="HabitDetail" options={{ title: 'HABIT PROTOCOL' }}>
+            {({ route }) => (
+              <HabitProvider>
+                <HabitDetailScreen habitId={route.params?.habitId} />
+              </HabitProvider>
+            )}
+          </Stack.Screen>
+        </Stack.Group>
       )}
     </Stack.Navigator>
   );
