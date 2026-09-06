@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { Habit } from '../types';
 import { getTodayYMD, isToday, getElapsedDaysInMonth, getDeviceTimeZone } from '../utils/date';
 import { syncUserTimeZone } from '../lib/profileService';
+import { syncHabitReminders, scheduleHabitReminder, cancelHabitReminder } from '../lib/notificationService';
 import {
   fetchUserHabits,
   toggleHabitCompletionInSupabase,
@@ -69,6 +70,13 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       await syncUserTimeZone(user.id);
       const fetched = await fetchUserHabits(user.id);
       setHabits(fetched);
+
+      // Keep local reminders aligned with the server-backed habit configuration.
+      try {
+        await syncHabitReminders(fetched);
+      } catch (notificationError) {
+        console.warn('[HabitContext] Notification sync skipped:', notificationError);
+      }
     } catch (err: any) {
       console.error('[HabitContext] Load habits error:', err);
       setError(err.message || 'Failed to load habit protocol data.');
@@ -122,6 +130,9 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (!user) throw new Error('User not authenticated.');
       const newHabit = await createHabitInSupabase(user.id, habitData);
       setHabits((prev) => [newHabit, ...prev]);
+      try { await scheduleHabitReminder(newHabit); } catch (notificationError) {
+        console.warn('[HabitContext] New habit reminder could not be scheduled:', notificationError);
+      }
     } catch (err: any) {
       console.error('[HabitContext] Create habit error:', err);
       throw err;
@@ -133,7 +144,14 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated.');
       await updateHabitInSupabase(user.id, habitId, habitData);
+      const updatedHabit = habits.find((h) => h.id === habitId);
+      const mergedHabit = updatedHabit ? { ...updatedHabit, ...habitData } : null;
       setHabits((prev) => prev.map((h) => h.id === habitId ? { ...h, ...habitData } : h));
+      if (mergedHabit) {
+        try { await scheduleHabitReminder(mergedHabit); } catch (notificationError) {
+          console.warn('[HabitContext] Updated habit reminder could not be scheduled:', notificationError);
+        }
+      }
     } catch (err: any) {
       console.error('[HabitContext] Update habit error:', err);
       throw err;
@@ -145,6 +163,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated.');
       await setHabitArchivedInSupabase(user.id, habitId, true);
+      await cancelHabitReminder(habitId);
       setHabits((prev) => prev.map((h) => h.id === habitId ? { ...h, isArchived: true } : h));
     } catch (err: any) {
       console.error('[HabitContext] Archive error:', err);
@@ -157,7 +176,13 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated.');
       await setHabitArchivedInSupabase(user.id, habitId, false);
+      const restored = habits.find((h) => h.id === habitId);
       setHabits((prev) => prev.map((h) => h.id === habitId ? { ...h, isArchived: false } : h));
+      if (restored) {
+        try { await scheduleHabitReminder({ ...restored, isArchived: false }); } catch (notificationError) {
+          console.warn('[HabitContext] Restored habit reminder could not be scheduled:', notificationError);
+        }
+      }
     } catch (err: any) {
       console.error('[HabitContext] Unarchive error:', err);
       throw err;
@@ -169,6 +194,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated.');
       await deleteHabitFromSupabase(user.id, habitId);
+      await cancelHabitReminder(habitId);
       setHabits((prev) => prev.filter((h) => h.id !== habitId));
     } catch (err: any) {
       console.error('[HabitContext] Delete error:', err);
