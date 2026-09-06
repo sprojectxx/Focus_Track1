@@ -1,32 +1,50 @@
 /**
- * Date Utility Functions for FocusTrack Mobile
- * Handles local date formatting, comparisons, and month day counts safely
- * without UTC offset drift.
+ * Date Utility Functions for FocusTrack Mobile.
+ * Uses the device IANA timezone so the client and Supabase
+ * enforce the same local calendar day.
  */
 
-/**
- * Returns today's date in local 'YYYY-MM-DD' format.
- */
-export function getTodayYMD(): string {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+export function getDeviceTimeZone(): string {
+  try {
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return timeZone || 'UTC';
+  } catch {
+    return 'UTC';
+  }
 }
 
-/**
- * Formats given year, 1-based month, and day into 'YYYY-MM-DD'.
- */
+/** Returns YYYY-MM-DD for the current instant in the requested IANA timezone. */
+export function getTodayYMD(timeZone: string = getDeviceTimeZone()): string {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(new Date());
+
+    const values: Record<string, string> = {};
+    for (const part of parts) {
+      if (part.type !== 'literal') values[part.type] = part.value;
+    }
+
+    if (values.year && values.month && values.day) {
+      return `${values.year}-${values.month}-${values.day}`;
+    }
+  } catch {
+    // Invalid timezone or unavailable Intl timezone data: use device-local time.
+  }
+
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export function formatYMD(year: number, month: number, day: number): string {
   const m = String(month).padStart(2, '0');
   const d = String(day).padStart(2, '0');
   return `${year}-${m}-${d}`;
 }
 
-/**
- * Parses 'YYYY-MM-DD' into local components without UTC timezone shifting.
- */
 export function parseYMD(dateStr: string): { year: number; month: number; day: number } | null {
   if (!dateStr || typeof dateStr !== 'string') return null;
   const parts = dateStr.split('-');
@@ -38,56 +56,35 @@ export function parseYMD(dateStr: string): { year: number; month: number; day: n
   return { year, month, day };
 }
 
-/**
- * Returns true if dateStr matches today's local 'YYYY-MM-DD'.
- */
-export function isToday(dateStr: string): boolean {
-  return dateStr === getTodayYMD();
+export function isToday(dateStr: string, timeZone?: string): boolean {
+  return dateStr === getTodayYMD(timeZone);
 }
 
-/**
- * Returns true if dateStr is strictly before today's local 'YYYY-MM-DD'.
- */
-export function isPast(dateStr: string): boolean {
-  return dateStr < getTodayYMD();
+export function isPast(dateStr: string, timeZone?: string): boolean {
+  return dateStr < getTodayYMD(timeZone);
 }
 
-/**
- * Returns true if dateStr is strictly after today's local 'YYYY-MM-DD'.
- */
-export function isFuture(dateStr: string): boolean {
-  return dateStr > getTodayYMD();
+export function isFuture(dateStr: string, timeZone?: string): boolean {
+  return dateStr > getTodayYMD(timeZone);
 }
 
-/**
- * Returns the exact number of days in a given year and 1-based month.
- */
 export function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month, 0).getDate();
 }
 
-/**
- * Returns how many days have elapsed up to today for the specified month/year.
- */
 export function getElapsedDaysInMonth(year: number, month: number): number {
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth() + 1; // 1-based
-  const currentDay = now.getDate();
+  const today = getTodayYMD();
+  const [currentYear, currentMonth, currentDay] = today.split('-').map(Number);
 
   if (year < currentYear || (year === currentYear && month < currentMonth)) {
     return getDaysInMonth(year, month);
   } else if (year === currentYear && month === currentMonth) {
     return Math.min(currentDay, getDaysInMonth(year, month));
-  } else {
-    return 0;
   }
+  return 0;
 }
 
-/**
- * Convert Date day (0=Sun, 1=Mon, ..., 6=Sat) to FocusTrack schedule index (0=Mon, ..., 6=Sun)
- */
 export function getFocusTrackDayIndex(date: Date): number {
-  const jsDay = date.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
-  return (jsDay + 6) % 7; // 0=Mon, 1=Tue, ..., 6=Sun
+  const jsDay = date.getDay();
+  return (jsDay + 6) % 7;
 }
