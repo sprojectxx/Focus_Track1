@@ -27,12 +27,22 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onSignOut }) => 
       setTimeZone('Unavailable');
     }
 
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        if (user.email) setUserEmail(user.email);
-        if (user.id) setUserId(user.id);
-      }
-    });
+    supabase.auth
+      .getUser()
+      .then(({ data: { user }, error }) => {
+        if (error || !user) {
+          setUserEmail('Unavailable');
+          setUserId(null);
+          return;
+        }
+        setUserEmail(user.email || 'Unavailable');
+        setUserId(user.id || null);
+      })
+      .catch((err) => {
+        console.warn('[SettingsScreen] Failed to retrieve user identity:', err);
+        setUserEmail('Unavailable');
+        setUserId(null);
+      });
   }, []);
 
   const handleSignOut = async () => {
@@ -115,7 +125,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onSignOut }) => 
           </View>
           <View style={[styles.infoRow, styles.lastInfoRow]}>
             <Text style={typography.caption}>FRAMEWORK</Text>
-            <Text style={typography.body}>React Native + Expo (M2 Auth)</Text>
+            <Text style={typography.body}>React Native + Expo</Text>
           </View>
         </View>
 
