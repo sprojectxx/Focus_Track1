@@ -14,15 +14,25 @@ import { useHabits } from '../context/HabitContext';
 import { colors, spacing, typography } from '../theme';
 import {
   calculateTotalRepetitions,
-  calculateHeatmapWeeks,
   calculateMonthlyRates,
   calculateHabitStats,
+  getMonthlyConsistencyMatrix,
 } from '../utils/habitStats';
+import {
+  getDeviceTimeZone,
+  getTodayYMD,
+  parseYMD,
+} from '../utils/date';
 import { LoadingState } from '../components/LoadingState';
 import { ErrorState } from '../components/ErrorState';
 import { EmptyState } from '../components/EmptyState';
 
-const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+const WEEKDAY_NAMES = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+
+const MONTH_NAMES = [
+  'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
+  'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER',
+];
 
 const HEATMAP_COLORS: Record<number, string> = {
   0: '#161616',
@@ -34,8 +44,16 @@ const HEATMAP_COLORS: Record<number, string> = {
 
 export const AnalyticsScreen: React.FC = () => {
   const { habits, activeHabits, loading, refreshing, error, refreshHabits, stats } = useHabits();
-  const currentYear = new Date().getFullYear();
-  const [selectedYear, setSelectedYear] = useState<number>(currentYear);
+
+  const timeZone = getDeviceTimeZone();
+  const todayStr = getTodayYMD(timeZone);
+  const parsedToday = useMemo(
+    () => parseYMD(todayStr) || { year: new Date().getFullYear(), month: new Date().getMonth() + 1, day: new Date().getDate() },
+    [todayStr]
+  );
+
+  const [selectedYear, setSelectedYear] = useState<number>(parsedToday.year);
+  const [selectedMonth, setSelectedMonth] = useState<number>(parsedToday.month);
 
   const totalRepetitions = useMemo(
     () => calculateTotalRepetitions(habits),
@@ -54,15 +72,38 @@ export const AnalyticsScreen: React.FC = () => {
     return { best, current };
   }, [activeHabits]);
 
-  const heatmapWeeks = useMemo(
-    () => calculateHeatmapWeeks(habits, selectedYear),
-    [habits, selectedYear]
+  const monthlyMatrix = useMemo(
+    () => getMonthlyConsistencyMatrix(habits, selectedYear, selectedMonth, timeZone),
+    [habits, selectedYear, selectedMonth, timeZone]
   );
 
   const monthlyRates = useMemo(
     () => calculateMonthlyRates(habits, selectedYear),
     [habits, selectedYear]
   );
+
+  const isCurrentOrFutureMonth =
+    selectedYear > parsedToday.year ||
+    (selectedYear === parsedToday.year && selectedMonth >= parsedToday.month);
+
+  const prevMonth = () => {
+    if (selectedMonth === 1) {
+      setSelectedMonth(12);
+      setSelectedYear((y) => y - 1);
+    } else {
+      setSelectedMonth((m) => m - 1);
+    }
+  };
+
+  const nextMonth = () => {
+    if (isCurrentOrFutureMonth) return;
+    if (selectedMonth === 12) {
+      setSelectedMonth(1);
+      setSelectedYear((y) => y + 1);
+    } else {
+      setSelectedMonth((m) => m + 1);
+    }
+  };
 
   if (loading && !refreshing) {
     return <LoadingState message="Calculating discipline metrics..." />;
@@ -94,7 +135,7 @@ export const AnalyticsScreen: React.FC = () => {
         {activeHabits.length === 0 ? (
           <EmptyState
             title="No Active Protocols"
-            description="Create active habit protocols to track discipline metrics and heatmap consistency."
+            description="Create active habit protocols to track discipline metrics and consistency."
           />
         ) : (
           <>
@@ -121,65 +162,112 @@ export const AnalyticsScreen: React.FC = () => {
               </View>
             </View>
 
-            {/* Heatmap Section */}
+            {/* Monthly Consistency Matrix Section */}
             <View style={styles.sectionCard}>
               <View style={styles.sectionHeader}>
                 <View>
-                  <Text style={typography.h3}>52-WEEK CONSISTENCY MATRIX</Text>
-                  <Text style={typography.caption}>EXECUTION INTENSITY HEATMAP</Text>
+                  <Text style={typography.h3}>MONTHLY CONSISTENCY MATRIX</Text>
+                  <Text style={typography.caption}>
+                    {MONTH_NAMES[selectedMonth - 1]} {selectedYear}
+                  </Text>
                 </View>
-                <View style={styles.yearSelector}>
+
+                {/* Month Navigation */}
+                <View style={styles.monthSelector}>
                   <TouchableOpacity
-                    onPress={() => setSelectedYear((y) => y - 1)}
-                    style={styles.yearNavButton}
+                    onPress={prevMonth}
+                    style={styles.monthNavButton}
                     activeOpacity={0.7}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
                     <Ionicons name="chevron-back" size={16} color={colors.textPrimary} />
                   </TouchableOpacity>
-                  <Text style={styles.yearText}>{selectedYear}</Text>
+                  <Text style={styles.monthText}>
+                    {MONTH_NAMES[selectedMonth - 1].slice(0, 3)} {selectedYear}
+                  </Text>
                   <TouchableOpacity
-                    onPress={() => setSelectedYear((y) => y + 1)}
-                    style={styles.yearNavButton}
+                    onPress={nextMonth}
+                    disabled={isCurrentOrFutureMonth}
+                    style={[styles.monthNavButton, isCurrentOrFutureMonth && styles.monthNavButtonDisabled]}
                     activeOpacity={0.7}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
-                    <Ionicons name="chevron-forward" size={16} color={colors.textPrimary} />
+                    <Ionicons
+                      name="chevron-forward"
+                      size={16}
+                      color={isCurrentOrFutureMonth ? colors.textMuted : colors.textPrimary}
+                    />
                   </TouchableOpacity>
                 </View>
               </View>
 
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.heatmapScroll}>
-                <View style={styles.heatmapGrid}>
-                  {/* Day Labels Column */}
-                  <View style={styles.dayLabelsColumn}>
-                    {DAY_LABELS.map((lbl, idx) => (
-                      <Text key={idx} style={styles.dayLabelText}>
-                        {lbl}
-                      </Text>
-                    ))}
+              {/* 7-Column Weekday Header */}
+              <View style={styles.weekdayRow}>
+                {WEEKDAY_NAMES.map((dayName) => (
+                  <View key={dayName} style={styles.weekdayCell}>
+                    <Text style={styles.weekdayText}>{dayName}</Text>
                   </View>
+                ))}
+              </View>
 
-                  {/* Weeks Columns */}
-                  {heatmapWeeks.map((week, wIdx) => (
-                    <View key={wIdx} style={styles.weekColumn}>
-                      {week.map((cell, dIdx) => (
-                        <View
-                          key={dIdx}
+              {/* 7-Column Day Grid */}
+              <View style={styles.matrixGrid}>
+                {monthlyMatrix.map((cell, idx) => {
+                  const isCurrentMonth = cell.isCurrentMonth;
+                  const isToday = cell.isToday;
+                  const isFuture = cell.isFuture;
+                  const level = cell.level;
+                  const totalDue = cell.totalDue;
+
+                  if (!isCurrentMonth) {
+                    return (
+                      <View key={idx} style={[styles.gridCell, styles.gridCellOtherMonth]}>
+                        <Text style={styles.gridDayTextOtherMonth}>
+                          {cell.day.toString().padStart(2, '0')}
+                        </Text>
+                      </View>
+                    );
+                  }
+
+                  return (
+                    <View
+                      key={idx}
+                      style={[
+                        styles.gridCell,
+                        isFuture && styles.gridCellFuture,
+                        isToday && styles.gridCellToday,
+                        !isFuture && totalDue > 0 && { backgroundColor: HEATMAP_COLORS[level] },
+                        !isFuture && totalDue === 0 && styles.gridCellNoData,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.gridDayText,
+                          isToday && styles.gridDayTextToday,
+                          !isFuture && level >= 3 && styles.gridDayTextDarkBg,
+                          isFuture && styles.gridDayTextFuture,
+                        ]}
+                      >
+                        {cell.day.toString().padStart(2, '0')}
+                      </Text>
+                      {!isFuture && totalDue > 0 ? (
+                        <Text
                           style={[
-                            styles.heatmapSquare,
-                            { backgroundColor: HEATMAP_COLORS[cell.level] || HEATMAP_COLORS[0] },
+                            styles.gridSubText,
+                            level >= 3 && styles.gridSubTextDarkBg,
                           ]}
-                        />
-                      ))}
+                        >
+                          {cell.completedDue}/{cell.totalDue}
+                        </Text>
+                      ) : null}
                     </View>
-                  ))}
-                </View>
-              </ScrollView>
+                  );
+                })}
+              </View>
 
               {/* Legend */}
               <View style={styles.legendRow}>
-                <Text style={typography.caption}>LESS</Text>
+                <Text style={typography.caption}>0%</Text>
                 {[0, 1, 2, 3, 4].map((lvl) => (
                   <View
                     key={lvl}
@@ -189,7 +277,7 @@ export const AnalyticsScreen: React.FC = () => {
                     ]}
                   />
                 ))}
-                <Text style={typography.caption}>MORE</Text>
+                <Text style={typography.caption}>100%</Text>
               </View>
             </View>
 
@@ -286,7 +374,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: spacing.md,
   },
-  yearSelector: {
+  monthSelector: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surfaceSecondary,
@@ -296,43 +384,97 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xs,
     paddingVertical: 2,
   },
-  yearNavButton: {
+  monthNavButton: {
     padding: spacing.xs,
   },
-  yearText: {
+  monthNavButtonDisabled: {
+    opacity: 0.3,
+  },
+  monthText: {
     fontSize: 12,
     fontWeight: '700',
     color: colors.textPrimary,
     paddingHorizontal: spacing.xs,
   },
-  heatmapScroll: {
-    marginBottom: spacing.sm,
-  },
-  heatmapGrid: {
+  weekdayRow: {
     flexDirection: 'row',
-    gap: 3,
+    marginBottom: spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    paddingBottom: 4,
   },
-  dayLabelsColumn: {
-    justifyContent: 'space-between',
-    marginRight: spacing.xs,
-    paddingVertical: 1,
+  weekdayCell: {
+    width: '13.5%',
+    marginHorizontal: '0.4%',
+    alignItems: 'center',
   },
-  dayLabelText: {
+  weekdayText: {
     fontSize: 9,
     fontWeight: '700',
     color: colors.textMuted,
-    height: 10,
-    lineHeight: 10,
   },
-  weekColumn: {
-    gap: 3,
+  matrixGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: spacing.sm,
   },
-  heatmapSquare: {
-    width: 10,
-    height: 10,
-    borderRadius: 2,
+  gridCell: {
+    width: '13.5%',
+    marginHorizontal: '0.4%',
+    marginVertical: 2,
+    aspectRatio: 1,
+    backgroundColor: colors.surfaceSecondary,
+    borderRadius: spacing.radiusSm,
     borderWidth: 1,
     borderColor: colors.border,
+    padding: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gridCellOtherMonth: {
+    backgroundColor: colors.background,
+    borderColor: 'transparent',
+    opacity: 0.15,
+  },
+  gridCellFuture: {
+    backgroundColor: colors.background,
+    borderColor: colors.border,
+    opacity: 0.25,
+  },
+  gridCellToday: {
+    borderColor: colors.textPrimary,
+    borderWidth: 1.5,
+  },
+  gridCellNoData: {
+    backgroundColor: colors.surfaceSecondary,
+    borderColor: colors.border,
+  },
+  gridDayText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  gridDayTextToday: {
+    color: colors.textPrimary,
+  },
+  gridDayTextDarkBg: {
+    color: colors.background,
+  },
+  gridDayTextFuture: {
+    color: colors.textMuted,
+  },
+  gridDayTextOtherMonth: {
+    color: colors.textMuted,
+  },
+  gridSubText: {
+    fontSize: 7,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    marginTop: 1,
+  },
+  gridSubTextDarkBg: {
+    color: colors.background,
+    opacity: 0.9,
   },
   legendRow: {
     flexDirection: 'row',
@@ -386,4 +528,3 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 });
-

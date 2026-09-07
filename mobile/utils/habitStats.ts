@@ -5,6 +5,10 @@ import {
   getFocusTrackDayIndex,
   formatYMD,
   parseYMDToLocalDate,
+  getCalendarMonthGrid,
+  getDeviceTimeZone,
+  isToday,
+  isFuture,
 } from './date';
 
 function getCleanDateYMD(dateStr?: string, fallbackTodayStr: string = getTodayYMD()): string {
@@ -12,6 +16,75 @@ function getCleanDateYMD(dateStr?: string, fallbackTodayStr: string = getTodayYM
   const clean = dateStr.slice(0, 10);
   if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) return clean;
   return fallbackTodayStr;
+}
+
+export interface MonthlyConsistencyCell {
+  day: number;
+  dateKey: string;
+  isCurrentMonth: boolean;
+  isToday: boolean;
+  isFuture: boolean;
+  totalDue: number;
+  completedDue: number;
+  ratio: number;
+  level: number;
+}
+
+/**
+ * Reusable Timezone-Safe Monthly Consistency Matrix Calculation
+ * Uses centralized isHabitDueOnDate for due/completion verification.
+ */
+export function getMonthlyConsistencyMatrix(
+  habits: Habit[],
+  year: number,
+  month: number,
+  timeZone: string = getDeviceTimeZone()
+): MonthlyConsistencyCell[] {
+  const todayStr = getTodayYMD(timeZone);
+  const monthGrid = getCalendarMonthGrid(year, month);
+
+  return monthGrid.map((gridCell) => {
+    const { day, dateKey, isCurrentMonth } = gridCell;
+    const isTodayCell = isToday(dateKey, timeZone);
+    const isFutureCell = isFuture(dateKey, timeZone);
+
+    let totalDue = 0;
+    let completedDue = 0;
+
+    if (!isFutureCell) {
+      for (const habit of habits) {
+        if (isHabitDueOnDate(habit, dateKey, todayStr)) {
+          totalDue++;
+          if (habit.history[dateKey]) {
+            completedDue++;
+          }
+        }
+      }
+    }
+
+    const ratio = totalDue > 0 ? completedDue / totalDue : 0;
+
+    let level = 0;
+    if (totalDue > 0) {
+      if (ratio >= 1.0) level = 4;
+      else if (ratio >= 0.75) level = 3;
+      else if (ratio >= 0.50) level = 2;
+      else if (ratio >= 0.25) level = 1;
+      else level = 0;
+    }
+
+    return {
+      day,
+      dateKey,
+      isCurrentMonth,
+      isToday: isTodayCell,
+      isFuture: isFutureCell,
+      totalDue,
+      completedDue,
+      ratio,
+      level,
+    };
+  });
 }
 
 /**
