@@ -72,51 +72,69 @@ export const RootNavigator: React.FC = () => {
     return <LoadingState message="Initializing FocusTrack session..." />;
   }
 
-  return (
-    <Stack.Navigator
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: colors.surface,
-        },
-        headerTintColor: colors.textPrimary,
-        headerTitleStyle: {
-          fontWeight: '600',
-          fontSize: 14,
-        },
-        contentStyle: {
-          backgroundColor: colors.background,
-        },
-      }}
-    >
-      {!session ? (
+  if (!session) {
+    return (
+      <Stack.Navigator
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: colors.surface,
+          },
+          headerTintColor: colors.textPrimary,
+          headerTitleStyle: {
+            fontWeight: '600',
+            fontSize: 14,
+          },
+          contentStyle: {
+            backgroundColor: colors.background,
+          },
+        }}
+      >
         <Stack.Screen
           name="Login"
           component={LoginScreen}
           options={{ headerShown: false }}
         />
-      ) : (
-        <HabitProvider>
-          <Stack.Group>
-            <Stack.Screen name="MainTabs" options={{ headerShown: false }}>
-              {({ navigation }) => (
-                <TabNavigator
-                  onNavigateToArchive={() => navigation.navigate('Archive')}
-                  onNavigateToDetail={(id) => navigation.navigate('HabitDetail', { habitId: id })}
-                  onSignOut={() => {
-                    supabase.auth.signOut();
-                  }}
-                />
-              )}
-            </Stack.Screen>
-            <Stack.Screen name="Archive" options={{ title: 'ARCHIVED PROTOCOLS' }}>
-              {() => <ArchiveScreen />}
-            </Stack.Screen>
-            <Stack.Screen name="HabitDetail" options={{ title: 'HABIT PROTOCOL' }}>
-              {({ route }) => <HabitDetailScreen habitId={route.params?.habitId} />}
-            </Stack.Screen>
-          </Stack.Group>
-        </HabitProvider>
-      )}
-    </Stack.Navigator>
+      </Stack.Navigator>
+    );
+  }
+
+  return (
+    <HabitProvider>
+      <Stack.Navigator
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: colors.surface,
+          },
+          headerTintColor: colors.textPrimary,
+          headerTitleStyle: {
+            fontWeight: '600',
+            fontSize: 14,
+          },
+          contentStyle: {
+            backgroundColor: colors.background,
+          },
+        }}
+      >
+        <Stack.Group>
+          <Stack.Screen name="MainTabs" options={{ headerShown: false }}>
+            {({ navigation }) => (
+              <TabNavigator
+                onNavigateToArchive={() => navigation.navigate('Archive')}
+                onNavigateToDetail={(id) => navigation.navigate('HabitDetail', { habitId: id })}
+                onSignOut={() => {
+                  supabase.auth.signOut();
+                }}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="Archive" options={{ title: 'ARCHIVED PROTOCOLS' }}>
+            {() => <ArchiveScreen />}
+          </Stack.Screen>
+          <Stack.Screen name="HabitDetail" options={{ title: 'HABIT PROTOCOL' }}>
+            {({ route }) => <HabitDetailScreen habitId={route.params?.habitId} />}
+          </Stack.Screen>
+        </Stack.Group>
+      </Stack.Navigator>
+    </HabitProvider>
   );
 };
