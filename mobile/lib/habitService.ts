@@ -1,11 +1,11 @@
 import { supabase } from './supabase';
 import { Habit } from '../types';
-import { isToday, getTodayYMD } from '../utils/date';
+import { isToday, getTodayYMD, getYMDInTimeZone, getDeviceTimeZone } from '../utils/date';
 
 const isUUID = (str: string): boolean =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 
-export async function fetchUserHabits(userId: string): Promise<Habit[]> {
+export async function fetchUserHabits(userId: string, timeZone: string = getDeviceTimeZone()): Promise<Habit[]> {
   if (!userId) return [];
 
   const { data: habitsData, error: habitsErr } = await supabase
@@ -60,9 +60,9 @@ export async function fetchUserHabits(userId: string): Promise<Habit[]> {
       targetTime: h.target_time || 'Morning',
       focusMinutesPerSession: h.focus_minutes_per_session || 30,
       isArchived: h.is_archived ?? false,
-      archivedAt: h.archived_at ? h.archived_at.split('T')[0] : undefined,
+      archivedAt: h.archived_at ? getYMDInTimeZone(h.archived_at, timeZone) : undefined,
       archivedIntervals: h.archived_intervals || undefined,
-      createdAt: h.created_at ? h.created_at.split('T')[0] : getTodayYMD(),
+      createdAt: h.created_at ? getYMDInTimeZone(h.created_at, timeZone) : getTodayYMD(timeZone),
       history,
     };
   });
@@ -147,7 +147,8 @@ export async function toggleHabitCompletionInSupabase(
 
 export async function createHabitInSupabase(
   userId: string,
-  habitData: Omit<Habit, 'id' | 'history' | 'isArchived' | 'createdAt'>
+  habitData: Omit<Habit, 'id' | 'history' | 'isArchived' | 'createdAt'>,
+  timeZone: string = getDeviceTimeZone()
 ): Promise<Habit> {
   const { data, error } = await supabase
     .from('habits')
@@ -194,7 +195,7 @@ export async function createHabitInSupabase(
     targetTime: data.target_time,
     focusMinutesPerSession: data.focus_minutes_per_session,
     isArchived: false,
-    createdAt: data.created_at ? data.created_at.split('T')[0] : getTodayYMD(),
+    createdAt: data.created_at ? getYMDInTimeZone(data.created_at, timeZone) : getTodayYMD(timeZone),
     history: {},
   };
 }

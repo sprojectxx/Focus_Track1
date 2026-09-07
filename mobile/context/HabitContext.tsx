@@ -69,7 +69,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
 
       await syncUserTimeZone(user.id);
-      const fetched = await fetchUserHabits(user.id);
+      const fetched = await fetchUserHabits(user.id, timeZone);
       setHabits(fetched);
 
       // Keep local reminders aligned with the server-backed habit configuration.
@@ -129,7 +129,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated.');
-      const newHabit = await createHabitInSupabase(user.id, habitData);
+      const newHabit = await createHabitInSupabase(user.id, habitData, timeZone);
       setHabits((prev) => [newHabit, ...prev]);
       try { await scheduleHabitReminder(newHabit); } catch (notificationError) {
         console.warn('[HabitContext] New habit reminder could not be scheduled:', notificationError);
