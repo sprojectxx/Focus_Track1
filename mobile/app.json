@@ -7,12 +7,15 @@
     "icon": "./assets/icon.png",
     "scheme": "com.focustrack.app",
     "userInterfaceStyle": "dark",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0A0A0A"
-    },
     "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#0A0A0A"
+        }
+      ],
       [
         "expo-notifications",
         {
@@ -20,7 +23,8 @@
           "defaultChannel": "habit-reminders"
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-font"
     ],
     "ios": {
       "supportsTablet": true,
