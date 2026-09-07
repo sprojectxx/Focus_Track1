@@ -5,87 +5,70 @@ import {
   StyleSheet,
   Image,
   TouchableOpacity,
-  KeyboardAvoidingView,
   ScrollView,
-  Platform,
-  TouchableWithoutFeedback,
-  Keyboard,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../lib/supabase';
+import * as WebBrowser from 'expo-web-browser';
+import { makeRedirectUri } from 'expo-auth-session';
+import { supabase, createSessionFromUrl } from '../lib/supabase';
 import { colors, spacing, typography } from '../theme';
-import { TextInputField } from '../components/TextInputField';
-import { Button } from '../components/Button';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export const LoginScreen: React.FC = () => {
-  const [email, setEmail] = useState<string>('');
-  const [password, setPassword] = useState<string>('');
-  const [showPassword, setShowPassword] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
-
-  const [emailError, setEmailError] = useState<string | null>(null);
-  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
 
-  const validateForm = (): boolean => {
-    let isValid = true;
-    setEmailError(null);
-    setPasswordError(null);
-    setAuthError(null);
-
-    const trimmedEmail = email.trim();
-    if (!trimmedEmail) {
-      setEmailError('Email address is required.');
-      isValid = false;
-    } else {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(trimmedEmail)) {
-        setEmailError('Please enter a valid email address.');
-        isValid = false;
-      }
-    }
-
-    if (!password) {
-      setPasswordError('Password is required.');
-      isValid = false;
-    }
-
-    return isValid;
-  };
-
-  const handleLogin = async () => {
-    Keyboard.dismiss();
-
-    if (!validateForm()) {
-      return;
-    }
-
+  const handleGoogleLogin = async () => {
+    if (loading) return;
     setLoading(true);
     setAuthError(null);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password: password,
+      const redirectUrl = makeRedirectUri({
+        scheme: 'com.focustrack.app',
+        path: 'auth/callback',
+      });
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl,
+          skipBrowserRedirect: true,
+        },
       });
 
       if (error) {
-        console.error('[Supabase Auth Error]:', error.message);
-        if (error.message.includes('Invalid login credentials')) {
-          setAuthError('Invalid email or password. Please check your credentials and try again.');
-        } else if (error.message.includes('Email not confirmed')) {
-          setAuthError('Email address has not been confirmed. Please check your inbox.');
+        console.error('[Supabase Google OAuth Error]:', error.message);
+        setAuthError(error.message || 'Google sign-in could not be initiated.');
+        setLoading(false);
+        return;
+      }
+
+      if (data?.url) {
+        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+
+        if (result.type === 'success' && result.url) {
+          const sessionCreated = await createSessionFromUrl(result.url);
+          if (!sessionCreated) {
+            const { data: sessionData } = await supabase.auth.getSession();
+            if (!sessionData.session) {
+              setAuthError('Authentication completed but session activation failed. Please try again.');
+            }
+          }
+        } else if (result.type === 'cancel' || result.type === 'dismiss') {
+          // User cancelled browser auth - clean return without scary error
         } else {
-          setAuthError(error.message || 'Authentication failed. Please try again.');
+          setAuthError('Sign-in was interrupted. Please try again.');
         }
-      } else if (data.session) {
-        // Auth session created; RootNavigator onAuthStateChange will automatically navigate
+      } else {
+        setAuthError('Unable to retrieve authentication URL. Please try again.');
       }
     } catch (err: any) {
-      console.error('[Supabase Login Exception]:', err);
-      setAuthError('Network error or connection issue. Please verify your internet connection.');
+      console.error('[Google Login Exception]:', err);
+      setAuthError('An unexpected error occurred during Google sign-in. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -93,117 +76,66 @@ export const LoginScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          showsVerticalScrollIndicator={false}
-        >
-            {/* Header Branding */}
-            <View style={styles.brandContainer}>
-              <Image
-                source={require('../assets/logo.png')}
-                style={styles.logo}
-                resizeMode="contain"
-              />
-              <Text style={typography.h1}>FOCUSTRACK</Text>
-              <Text style={[typography.bodySecondary, styles.subtitle]}>
-                HIGH-PERFORMANCE HABIT & ROUTINE PROTOCOL
-              </Text>
+        {/* Header Branding */}
+        <View style={styles.brandContainer}>
+          <Image
+            source={require('../assets/logo.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <Text style={typography.h1}>FOCUSTRACK</Text>
+          <Text style={[typography.bodySecondary, styles.subtitle]}>
+            HIGH-PERFORMANCE HABIT & ROUTINE PROTOCOL
+          </Text>
+        </View>
+
+        {/* OAuth Form Card */}
+        <View style={styles.card}>
+          <Text style={typography.h3}>ACCOUNT ACCESS</Text>
+          <Text style={[typography.bodySecondary, styles.cardSubtitle]}>
+            Sign in using your Google account to access your FocusTrack habit protocols.
+          </Text>
+
+          {/* General Error Banner */}
+          {authError ? (
+            <View style={styles.errorBanner}>
+              <Ionicons name="alert-circle-outline" size={20} color={colors.dangerText} />
+              <Text style={[typography.caption, styles.errorBannerText]}>{authError}</Text>
             </View>
+          ) : null}
 
-            {/* Login Form Card */}
-            <View style={styles.card}>
-              <Text style={typography.h3}>Account Login</Text>
-              <Text style={[typography.bodySecondary, styles.cardSubtitle]}>
-                Sign in with your FocusTrack account credentials.
-              </Text>
+          {/* Google OAuth Primary CTA Button */}
+          <TouchableOpacity
+            onPress={handleGoogleLogin}
+            disabled={loading}
+            activeOpacity={0.7}
+            style={[styles.googleButton, loading && styles.googleButtonDisabled]}
+            accessibilityLabel="Continue with Google"
+            accessibilityRole="button"
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color={colors.background} />
+            ) : (
+              <Ionicons name="logo-google" size={20} color={colors.background} />
+            )}
+            <Text style={styles.googleButtonText}>
+              {loading ? 'SIGNING IN...' : 'CONTINUE WITH GOOGLE'}
+            </Text>
+          </TouchableOpacity>
+        </View>
 
-              {/* General Error Banner */}
-              {authError ? (
-                <View style={styles.errorBanner}>
-                  <Ionicons name="alert-circle-outline" size={20} color={colors.dangerText} />
-                  <Text style={[typography.caption, styles.errorBannerText]}>{authError}</Text>
-                </View>
-              ) : null}
-
-              {/* Email Input */}
-              <TextInputField
-                label="Email Address"
-                value={email}
-                onChangeText={(text) => {
-                  setEmail(text);
-                  if (emailError) setEmailError(null);
-                  if (authError) setAuthError(null);
-                }}
-                placeholder="name@domain.com"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                error={emailError}
-                accessibilityLabel="Email Address Input"
-              />
-
-              {/* Password Input */}
-              <TextInputField
-                label="Password"
-                value={password}
-                onChangeText={(text) => {
-                  setPassword(text);
-                  if (passwordError) setPasswordError(null);
-                  if (authError) setAuthError(null);
-                }}
-                placeholder="Enter password"
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                error={passwordError}
-                accessibilityLabel="Password Input"
-                rightAction={
-                  <TouchableOpacity
-                    onPress={() => setShowPassword((prev) => !prev)}
-                    style={styles.eyeButton}
-                    activeOpacity={0.7}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    accessibilityLabel={showPassword ? 'Hide Password' : 'Show Password'}
-                    accessibilityRole="button"
-                  >
-                    <Ionicons
-                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                      size={20}
-                      color={colors.textSecondary}
-                    />
-                  </TouchableOpacity>
-                }
-              />
-
-              {/* Submit Button */}
-              <Button
-                title={loading ? 'SIGNING IN...' : 'SIGN IN'}
-                onPress={handleLogin}
-                variant="primary"
-                disabled={loading}
-                style={styles.submitButton}
-              />
-
-              {loading ? (
-                <View style={styles.loadingIndicatorContainer}>
-                  <ActivityIndicator size="small" color={colors.textPrimary} />
-                </View>
-              ) : null}
-            </View>
-
-            {/* Footer Notice */}
-            <View style={styles.footer}>
-              <Text style={typography.caption}>
-                FocusTrack Native Mobile v1.0 • Package com.focustrack.app
-              </Text>
-            </View>
-          </ScrollView>
-      </KeyboardAvoidingView>
+        {/* Footer Notice */}
+        <View style={styles.footer}>
+          <Text style={typography.caption}>
+            FocusTrack Native Mobile v1.0 • Package com.focustrack.app
+          </Text>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -212,9 +144,6 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  keyboardView: {
-    flex: 1,
   },
   scrollView: {
     flex: 1,
@@ -268,18 +197,25 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     lineHeight: 18,
   },
-  eyeButton: {
-    width: spacing.minTouchTarget,
-    height: spacing.minTouchTarget,
+  googleButton: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: colors.textPrimary,
+    minHeight: 48,
+    borderRadius: spacing.radiusSm,
+    paddingHorizontal: spacing.lg,
+    gap: spacing.sm,
+    marginTop: spacing.sm,
   },
-  submitButton: {
-    marginTop: spacing.md,
+  googleButtonDisabled: {
+    opacity: 0.6,
   },
-  loadingIndicatorContainer: {
-    marginTop: spacing.md,
-    alignItems: 'center',
+  googleButtonText: {
+    color: colors.background,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 1,
   },
   footer: {
     marginTop: spacing.xl,

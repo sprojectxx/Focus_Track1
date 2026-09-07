@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Session } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
+import * as Linking from 'expo-linking';
+import { supabase, createSessionFromUrl } from '../lib/supabase';
 import { colors } from '../theme';
 import { LoadingState } from '../components/LoadingState';
 import { LoginScreen } from '../screens/LoginScreen';
@@ -44,10 +45,26 @@ export const RootNavigator: React.FC = () => {
       }
     });
 
-    // 3. Cleanup subscription on unmount
+    // 3. Handle deep links for OAuth callbacks
+    const handleUrl = (event: { url: string }) => {
+      if (event.url && event.url.includes('auth/callback')) {
+        createSessionFromUrl(event.url);
+      }
+    };
+
+    const linkSub = Linking.addEventListener('url', handleUrl);
+
+    Linking.getInitialURL().then((url) => {
+      if (url && url.includes('auth/callback')) {
+        createSessionFromUrl(url);
+      }
+    });
+
+    // 4. Cleanup listeners on unmount
     return () => {
       isMounted = false;
       subscription.unsubscribe();
+      linkSub.remove();
     };
   }, []);
 

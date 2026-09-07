@@ -19,7 +19,8 @@
           "color": "#FFFFFF",
           "defaultChannel": "habit-reminders"
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "ios": {
       "supportsTablet": true,
