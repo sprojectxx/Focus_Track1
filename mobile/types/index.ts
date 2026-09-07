@@ -19,6 +19,8 @@ export interface Habit {
   history: Record<string, boolean>; // 'YYYY-MM-DD': boolean
   focusMinutesPerSession: number;
   isArchived: boolean;
+  archivedAt?: string;
+  archivedIntervals?: Array<{ archivedAt: string; restoredAt: string }>;
   createdAt: string;
 }
 

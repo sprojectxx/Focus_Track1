@@ -60,6 +60,8 @@ export async function fetchUserHabits(userId: string): Promise<Habit[]> {
       targetTime: h.target_time || 'Morning',
       focusMinutesPerSession: h.focus_minutes_per_session || 30,
       isArchived: h.is_archived ?? false,
+      archivedAt: h.archived_at ? h.archived_at.split('T')[0] : undefined,
+      archivedIntervals: h.archived_intervals || undefined,
       createdAt: h.created_at ? h.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
       history,
     };
@@ -229,16 +231,42 @@ export async function updateHabitInSupabase(
 export async function setHabitArchivedInSupabase(
   userId: string,
   habitId: string,
-  isArchived: boolean
-): Promise<void> {
+  isArchived: boolean,
+  currentHabit?: Habit
+): Promise<{ archivedAt?: string; archivedIntervals?: Array<{ archivedAt: string; restoredAt: string }> }> {
+  const todayYMD = new Date().toISOString().split('T')[0];
+  let updatePayload: Record<string, any> = { is_archived: isArchived };
+  let newArchivedAt: string | undefined = undefined;
+  let newArchivedIntervals: Array<{ archivedAt: string; restoredAt: string }> | undefined = currentHabit?.archivedIntervals;
+
+  if (isArchived) {
+    newArchivedAt = todayYMD;
+    updatePayload.archived_at = new Date().toISOString();
+  } else {
+    // Restoring
+    updatePayload.archived_at = null;
+    const previousArchivedAt = currentHabit?.archivedAt || todayYMD;
+    const closedInterval = { archivedAt: previousArchivedAt, restoredAt: todayYMD };
+    newArchivedIntervals = [...(currentHabit?.archivedIntervals || []), closedInterval];
+    updatePayload.archived_intervals = newArchivedIntervals;
+    newArchivedAt = undefined;
+  }
+
   const { error } = await supabase
     .from('habits')
-    .update({ is_archived: isArchived })
+    .update(updatePayload)
     .match({ id: habitId, user_id: userId });
 
   if (error) {
-    throw error;
+    console.warn('[HabitService] Full archive payload update notice, retrying core archive state:', error.message);
+    const { error: fallbackErr } = await supabase
+      .from('habits')
+      .update({ is_archived: isArchived })
+      .match({ id: habitId, user_id: userId });
+    if (fallbackErr) throw fallbackErr;
   }
+
+  return { archivedAt: newArchivedAt, archivedIntervals: newArchivedIntervals };
 }
 
 export async function deleteHabitFromSupabase(userId: string, habitId: string): Promise<void> {

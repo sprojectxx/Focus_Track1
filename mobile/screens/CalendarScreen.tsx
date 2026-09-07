@@ -23,6 +23,7 @@ import {
   yearInWords,
   getDeviceTimeZone,
 } from '../utils/date';
+import { isHabitDueOnDate } from '../utils/habitStats';
 
 const MONTH_NAMES = [
   'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
@@ -166,8 +167,10 @@ export const CalendarScreen: React.FC = () => {
             const isTodayCell = isToday(dateKey, timeZone);
             const isSelected = selectedDateStr === dateKey;
 
-            // Habits completed on this day (active + archived)
-            const completedHabits = habits.filter((h) => !!h.history[dateKey]);
+            // Habits completed and due on this day (active + archived)
+            const completedHabits = habits.filter(
+              (h) => isHabitDueOnDate(h, dateKey, todayStr) && !!h.history[dateKey]
+            );
 
             return (
               <TouchableOpacity
@@ -245,8 +248,8 @@ export const CalendarScreen: React.FC = () => {
               {(() => {
                 const isTodaySelected = selectedDateStr ? isToday(selectedDateStr, timeZone) : false;
                 const relevantHabits = isTodaySelected
-                  ? activeHabits
-                  : habits.filter((h) => selectedDateStr && (h.createdAt || '').slice(0, 10) <= selectedDateStr);
+                  ? activeHabits.filter((h) => selectedDateStr && isHabitDueOnDate(h, selectedDateStr, todayStr))
+                  : habits.filter((h) => selectedDateStr && isHabitDueOnDate(h, selectedDateStr, todayStr));
 
                 if (relevantHabits.length === 0) {
                   return (

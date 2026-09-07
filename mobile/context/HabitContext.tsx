@@ -163,9 +163,14 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated.');
-      await setHabitArchivedInSupabase(user.id, habitId, true);
+      const current = habits.find((h) => h.id === habitId);
+      const { archivedAt } = await setHabitArchivedInSupabase(user.id, habitId, true, current);
       await cancelHabitReminder(habitId);
-      setHabits((prev) => prev.map((h) => h.id === habitId ? { ...h, isArchived: true } : h));
+      setHabits((prev) =>
+        prev.map((h) =>
+          h.id === habitId ? { ...h, isArchived: true, archivedAt: archivedAt || new Date().toISOString().split('T')[0] } : h
+        )
+      );
     } catch (err: any) {
       console.error('[HabitContext] Archive error:', err);
       throw err;
@@ -176,11 +181,17 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated.');
-      await setHabitArchivedInSupabase(user.id, habitId, false);
-      const restored = habits.find((h) => h.id === habitId);
-      setHabits((prev) => prev.map((h) => h.id === habitId ? { ...h, isArchived: false } : h));
-      if (restored) {
-        try { await scheduleHabitReminder({ ...restored, isArchived: false }); } catch (notificationError) {
+      const target = habits.find((h) => h.id === habitId);
+      const { archivedIntervals } = await setHabitArchivedInSupabase(user.id, habitId, false, target);
+      setHabits((prev) =>
+        prev.map((h) =>
+          h.id === habitId
+            ? { ...h, isArchived: false, archivedAt: undefined, archivedIntervals: archivedIntervals || h.archivedIntervals }
+            : h
+        )
+      );
+      if (target) {
+        try { await scheduleHabitReminder({ ...target, isArchived: false }); } catch (notificationError) {
           console.warn('[HabitContext] Restored habit reminder could not be scheduled:', notificationError);
         }
       }

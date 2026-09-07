@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useHabits } from '../context/HabitContext';
 import { colors, spacing, typography } from '../theme';
-import { calculateHabitStats } from '../utils/habitStats';
+import { calculateHabitStats, isHabitDueOnDate } from '../utils/habitStats';
 import { EmptyState } from '../components/EmptyState';
 import { AddEditHabitModal } from '../components/AddEditHabitModal';
 
@@ -214,6 +214,7 @@ export const HabitDetailScreen: React.FC<HabitDetailScreenProps> = ({ habitId })
             const isBeforeCreation = createdAtYMD ? dateKey < createdAtYMD : false;
             const ftDayIndex = (d.getDay() + 6) % 7; // 0=Mon, 6=Sun
             const isScheduled = (habit.scheduleDays || [0, 1, 2, 3, 4, 5, 6]).includes(ftDayIndex);
+            const isDue = isHabitDueOnDate(habit, dateKey);
 
             const isDone = !!habit.history[dateKey];
             const dateLabel = d.toLocaleDateString('en-US', {
@@ -225,6 +226,7 @@ export const HabitDetailScreen: React.FC<HabitDetailScreenProps> = ({ habitId })
             let statusText = 'NO LOG';
             if (isBeforeCreation) statusText = 'BEFORE CREATION';
             else if (!isScheduled) statusText = 'OFF DAY';
+            else if (!isDue && habit.isArchived) statusText = 'ARCHIVED';
             else if (isDone) statusText = 'COMPLETED';
 
             return (
@@ -237,7 +239,7 @@ export const HabitDetailScreen: React.FC<HabitDetailScreenProps> = ({ habitId })
                   ]}
                 >
                   <Ionicons
-                    name={isDone ? 'checkmark' : isBeforeCreation || !isScheduled ? 'ellipse-outline' : 'close'}
+                    name={isDone ? 'checkmark' : !isDue ? 'ellipse-outline' : 'close'}
                     size={12}
                     color={isDone ? colors.textPrimary : colors.textMuted}
                   />
