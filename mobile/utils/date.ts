@@ -1,50 +1,50 @@
 /**
- * Date Utility Functions for FocusTrack Mobile.
- * Uses the device IANA timezone so the client and Supabase
- * enforce the same local calendar day.
+ * Date Utility Functions for FocusTrack Mobile
+ * Handles local date formatting, comparisons, and month day counts safely
+ * without UTC offset drift, incorporating user's IANA timezone.
  */
 
 export function getDeviceTimeZone(): string {
   try {
-    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    return timeZone || 'UTC';
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
   } catch {
     return 'UTC';
   }
 }
 
-/** Returns YYYY-MM-DD for the current instant in the requested IANA timezone. */
+/**
+ * Returns today's date in local 'YYYY-MM-DD' format for given timezone.
+ */
 export function getTodayYMD(timeZone: string = getDeviceTimeZone()): string {
   try {
-    const parts = new Intl.DateTimeFormat('en-US', {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
       timeZone,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
-    }).formatToParts(new Date());
-
-    const values: Record<string, string> = {};
-    for (const part of parts) {
-      if (part.type !== 'literal') values[part.type] = part.value;
-    }
-
-    if (values.year && values.month && values.day) {
-      return `${values.year}-${values.month}-${values.day}`;
-    }
+    });
+    return formatter.format(new Date());
   } catch {
-    // Invalid timezone or unavailable Intl timezone data: use device-local time.
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
-
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+/**
+ * Formats given year, 1-based month, and day into 'YYYY-MM-DD'.
+ */
 export function formatYMD(year: number, month: number, day: number): string {
   const m = String(month).padStart(2, '0');
   const d = String(day).padStart(2, '0');
   return `${year}-${m}-${d}`;
 }
 
+/**
+ * Parses 'YYYY-MM-DD' into local components without UTC timezone shifting.
+ */
 export function parseYMD(dateStr: string): { year: number; month: number; day: number } | null {
   if (!dateStr || typeof dateStr !== 'string') return null;
   const parts = dateStr.split('-');
@@ -56,35 +56,129 @@ export function parseYMD(dateStr: string): { year: number; month: number; day: n
   return { year, month, day };
 }
 
-export function isToday(dateStr: string, timeZone?: string): boolean {
+/**
+ * Returns true if dateStr matches today's local 'YYYY-MM-DD'.
+ */
+export function isToday(dateStr: string, timeZone: string = getDeviceTimeZone()): boolean {
   return dateStr === getTodayYMD(timeZone);
 }
 
-export function isPast(dateStr: string, timeZone?: string): boolean {
+/**
+ * Returns true if dateStr is strictly before today's local 'YYYY-MM-DD'.
+ */
+export function isPast(dateStr: string, timeZone: string = getDeviceTimeZone()): boolean {
   return dateStr < getTodayYMD(timeZone);
 }
 
-export function isFuture(dateStr: string, timeZone?: string): boolean {
+/**
+ * Returns true if dateStr is strictly after today's local 'YYYY-MM-DD'.
+ */
+export function isFuture(dateStr: string, timeZone: string = getDeviceTimeZone()): boolean {
   return dateStr > getTodayYMD(timeZone);
 }
 
+/**
+ * Returns the exact number of days in a given year and 1-based month.
+ */
 export function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month, 0).getDate();
 }
 
-export function getElapsedDaysInMonth(year: number, month: number): number {
-  const today = getTodayYMD();
-  const [currentYear, currentMonth, currentDay] = today.split('-').map(Number);
+/**
+ * Returns how many days have elapsed up to today for the specified month/year.
+ */
+export function getElapsedDaysInMonth(year: number, month: number, timeZone: string = getDeviceTimeZone()): number {
+  const todayStr = getTodayYMD(timeZone);
+  const parsed = parseYMD(todayStr);
+  if (!parsed) return getDaysInMonth(year, month);
+
+  const { year: currentYear, month: currentMonth, day: currentDay } = parsed;
 
   if (year < currentYear || (year === currentYear && month < currentMonth)) {
     return getDaysInMonth(year, month);
   } else if (year === currentYear && month === currentMonth) {
     return Math.min(currentDay, getDaysInMonth(year, month));
+  } else {
+    return 0;
   }
-  return 0;
 }
 
+/**
+ * Convert Date day (0=Sun, 1=Mon, ..., 6=Sat) to FocusTrack schedule index (0=Mon, ..., 6=Sun)
+ */
 export function getFocusTrackDayIndex(date: Date): number {
-  const jsDay = date.getDay();
-  return (jsDay + 6) % 7;
+  const jsDay = date.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  return (jsDay + 6) % 7; // 0=Mon, 1=Tue, ..., 6=Sun
+}
+
+export interface CalendarGridCell {
+  day: number;
+  dateKey: string;
+  isCurrentMonth: boolean;
+  isPrev: boolean;
+  isNext: boolean;
+}
+
+/**
+ * Generates month grid cells padded with previous and next month dates (35 or 42 cells total)
+ */
+export function getCalendarMonthGrid(year: number, month: number): CalendarGridCell[] {
+  const daysInMonth = getDaysInMonth(year, month);
+  const firstDayIndex = (new Date(year, month - 1, 1).getDay() + 6) % 7; // 0=Mon, 6=Sun
+  const prevMonthDaysCount = new Date(year, month - 1, 0).getDate();
+
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const prevYear = month === 1 ? year - 1 : year;
+
+  const nextMonth = month === 12 ? 1 : month + 1;
+  const nextYear = month === 12 ? year + 1 : year;
+
+  // Prev month padding cells
+  const prevMonthCells: CalendarGridCell[] = Array.from({ length: firstDayIndex }, (_, i) => {
+    const day = prevMonthDaysCount - firstDayIndex + i + 1;
+    return {
+      day,
+      dateKey: formatYMD(prevYear, prevMonth, day),
+      isCurrentMonth: false,
+      isPrev: true,
+      isNext: false,
+    };
+  });
+
+  // Current month cells
+  const currentMonthCells: CalendarGridCell[] = Array.from({ length: daysInMonth }, (_, i) => {
+    const day = i + 1;
+    return {
+      day,
+      dateKey: formatYMD(year, month, day),
+      isCurrentMonth: true,
+      isPrev: false,
+      isNext: false,
+    };
+  });
+
+  // Next month padding cells
+  const totalCellsSoFar = prevMonthCells.length + currentMonthCells.length;
+  const remainingCells = totalCellsSoFar <= 35 ? 35 - totalCellsSoFar : 42 - totalCellsSoFar;
+
+  const nextMonthCells: CalendarGridCell[] = Array.from({ length: remainingCells }, (_, i) => {
+    const day = i + 1;
+    return {
+      day,
+      dateKey: formatYMD(nextYear, nextMonth, day),
+      isCurrentMonth: false,
+      isPrev: false,
+      isNext: true,
+    };
+  });
+
+  return [...prevMonthCells, ...currentMonthCells, ...nextMonthCells];
+}
+
+export function yearInWords(year: number): string {
+  if (year === 2023) return 'TWO THOUSAND TWENTY THREE';
+  if (year === 2024) return 'TWO THOUSAND TWENTY FOUR';
+  if (year === 2025) return 'TWO THOUSAND TWENTY FIVE';
+  if (year === 2026) return 'TWO THOUSAND TWENTY SIX';
+  return year.toString();
 }

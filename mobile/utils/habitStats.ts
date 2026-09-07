@@ -1,5 +1,5 @@
 import { Habit, HabitStats } from '../types';
-import { getTodayYMD, getDaysInMonth, getFocusTrackDayIndex } from './date';
+import { getTodayYMD, getDaysInMonth, getFocusTrackDayIndex, formatYMD } from './date';
 
 function parseDateKey(dateStr: string): Date {
   const [y, m, d] = dateStr.split('-').map((s) => parseInt(s, 10));
@@ -158,4 +158,84 @@ export function calculateHabitStats(
     bestStreak,
     trajectoryBars,
   };
+}
+
+export function calculateTotalRepetitions(habits: Habit[]): number {
+  let total = 0;
+  habits.forEach((h) => {
+    Object.values(h.history).forEach((val) => {
+      if (val) total++;
+    });
+  });
+  return total;
+}
+
+export interface HeatmapCell {
+  dateStr: string;
+  count: number;
+  level: number; // 0 to 4
+}
+
+export function calculateHeatmapWeeks(habits: Habit[], selectedYear: number): HeatmapCell[][] {
+  const weeks: HeatmapCell[][] = [];
+  const startDate = new Date(selectedYear, 0, 1);
+  const dayOfWeek = (startDate.getDay() + 6) % 7; // 0=Mon, 6=Sun
+  const current = new Date(startDate);
+  current.setDate(current.getDate() - dayOfWeek);
+
+  for (let w = 0; w < 53; w++) {
+    const week: HeatmapCell[] = [];
+    for (let d = 0; d < 7; d++) {
+      const year = current.getFullYear();
+      const monthStr = (current.getMonth() + 1).toString().padStart(2, '0');
+      const dayStr = current.getDate().toString().padStart(2, '0');
+      const key = `${year}-${monthStr}-${dayStr}`;
+
+      let completedCount = 0;
+      habits.forEach((h) => {
+        if (h.history[key]) completedCount++;
+      });
+
+      let level = 0;
+      if (completedCount >= 4) level = 4;
+      else if (completedCount === 3) level = 3;
+      else if (completedCount === 2) level = 2;
+      else if (completedCount === 1) level = 1;
+
+      week.push({
+        dateStr: key,
+        count: completedCount,
+        level,
+      });
+
+      current.setDate(current.getDate() + 1);
+    }
+    weeks.push(week);
+    if (current.getFullYear() > selectedYear && w >= 51) break;
+  }
+  return weeks;
+}
+
+export interface MonthlyRate {
+  month: string;
+  rate: number;
+}
+
+export function calculateMonthlyRates(habits: Habit[], selectedYear: number): MonthlyRate[] {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return months.map((monthName, monthIndex) => {
+    const daysInMonth = new Date(selectedYear, monthIndex + 1, 0).getDate();
+    let monthCompleted = 0;
+    let monthTotalPossible = habits.length * daysInMonth;
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateKey = `${selectedYear}-${(monthIndex + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+      habits.forEach((h) => {
+        if (h.history[dateKey]) monthCompleted++;
+      });
+    }
+
+    const rate = monthTotalPossible > 0 ? Math.round((monthCompleted / monthTotalPossible) * 100) : 0;
+    return { month: monthName, rate };
+  });
 }

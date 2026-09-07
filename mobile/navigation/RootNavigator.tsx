@@ -78,10 +78,10 @@ export const RootNavigator: React.FC = () => {
           options={{ headerShown: false }}
         />
       ) : (
-        <Stack.Group>
-          <Stack.Screen name="MainTabs" options={{ headerShown: false }}>
-            {({ navigation }) => (
-              <HabitProvider>
+        <HabitProvider>
+          <Stack.Group>
+            <Stack.Screen name="MainTabs" options={{ headerShown: false }}>
+              {({ navigation }) => (
                 <TabNavigator
                   onNavigateToArchive={() => navigation.navigate('Archive')}
                   onNavigateToDetail={(id) => navigation.navigate('HabitDetail', { habitId: id })}
@@ -89,24 +89,16 @@ export const RootNavigator: React.FC = () => {
                     supabase.auth.signOut();
                   }}
                 />
-              </HabitProvider>
-            )}
-          </Stack.Screen>
-          <Stack.Screen name="Archive" options={{ title: 'ARCHIVED PROTOCOLS' }}>
-            {() => (
-              <HabitProvider>
-                <ArchiveScreen />
-              </HabitProvider>
-            )}
-          </Stack.Screen>
-          <Stack.Screen name="HabitDetail" options={{ title: 'HABIT PROTOCOL' }}>
-            {({ route }) => (
-              <HabitProvider>
-                <HabitDetailScreen habitId={route.params?.habitId} />
-              </HabitProvider>
-            )}
-          </Stack.Screen>
-        </Stack.Group>
+              )}
+            </Stack.Screen>
+            <Stack.Screen name="Archive" options={{ title: 'ARCHIVED PROTOCOLS' }}>
+              {() => <ArchiveScreen />}
+            </Stack.Screen>
+            <Stack.Screen name="HabitDetail" options={{ title: 'HABIT PROTOCOL' }}>
+              {({ route }) => <HabitDetailScreen habitId={route.params?.habitId} />}
+            </Stack.Screen>
+          </Stack.Group>
+        </HabitProvider>
       )}
     </Stack.Navigator>
   );

@@ -197,6 +197,54 @@ export const HabitDetailScreen: React.FC<HabitDetailScreenProps> = ({ habitId })
           </View>
         </View>
 
+        {/* 14-Day Recent Execution History */}
+        <View style={styles.sectionTitleRow}>
+          <Text style={typography.h3}>RECENT EXECUTION HISTORY (14 DAYS)</Text>
+        </View>
+
+        <View style={styles.historyCard}>
+          {Array.from({ length: 14 }).map((_, i) => {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const yStr = d.getFullYear();
+            const mStr = (d.getMonth() + 1).toString().padStart(2, '0');
+            const dayStr = d.getDate().toString().padStart(2, '0');
+            const dateKey = `${yStr}-${mStr}-${dayStr}`;
+            const isDone = !!habit.history[dateKey];
+            const dateLabel = d.toLocaleDateString('en-US', {
+              weekday: 'short',
+              month: 'short',
+              day: 'numeric',
+            }).toUpperCase();
+
+            return (
+              <View key={dateKey} style={styles.historyRow}>
+                <Text style={styles.historyDateText}>{dateLabel}</Text>
+                <View
+                  style={[
+                    styles.historyBadge,
+                    isDone ? styles.historyBadgeDone : styles.historyBadgeMissed,
+                  ]}
+                >
+                  <Ionicons
+                    name={isDone ? 'checkmark' : 'close'}
+                    size={12}
+                    color={isDone ? colors.textPrimary : colors.textMuted}
+                  />
+                  <Text
+                    style={[
+                      styles.historyBadgeText,
+                      isDone ? styles.historyTextDone : styles.historyTextMissed,
+                    ]}
+                  >
+                    {isDone ? 'COMPLETED' : 'NO LOG'}
+                  </Text>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+
         {/* Edit Modal */}
         <AddEditHabitModal
           visible={isEditModalOpen}
@@ -389,5 +437,53 @@ const styles = StyleSheet.create({
     width: '100%',
     backgroundColor: colors.textPrimary,
     borderRadius: 6,
+  },
+  historyCard: {
+    backgroundColor: colors.surface,
+    borderRadius: spacing.radiusLg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  historyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  historyDateText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  historyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
+    borderRadius: spacing.radiusSm,
+    borderWidth: 1,
+    gap: 4,
+  },
+  historyBadgeDone: {
+    backgroundColor: colors.surfaceSecondary,
+    borderColor: colors.textPrimary,
+  },
+  historyBadgeMissed: {
+    backgroundColor: colors.background,
+    borderColor: colors.border,
+  },
+  historyBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  historyTextDone: {
+    color: colors.textPrimary,
+  },
+  historyTextMissed: {
+    color: colors.textMuted,
   },
 });
