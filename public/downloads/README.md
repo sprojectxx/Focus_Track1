@@ -8,17 +8,16 @@ When building with Vite (`npm run build`), all contents in `public/` are automat
 When deployed to Vercel, users will be able to download the Android APK directly from:
 `https://your-vercel-domain.vercel.app/downloads/FocusTrack-Android.apk`
 
-## How to build the APK using Capacitor:
-1. Ensure Android Studio and Android SDK are installed.
-2. Run build & sync:
+## How to build the native Android APK using Expo / EAS:
+1. Navigate to the `/mobile` directory:
    ```bash
-   npm run build
-   npx cap sync android
-   npx cap open android
+   cd mobile
    ```
-3. In Android Studio:
-   - Select **Build** > **Build Bundle(s) / APK(s)** > **Build APK(s)**
-   - Copy the generated `app-debug.apk` or `app-release.apk` to `public/downloads/FocusTrack-Android.apk`.
+2. Build the Android release APK using EAS Build:
+   ```bash
+   npx eas-cli build -p android --profile production
+   ```
+3. Copy the generated APK to `public/downloads/FocusTrack-Android.apk`.
 4. Deploy to Vercel:
    ```bash
    vercel --prod

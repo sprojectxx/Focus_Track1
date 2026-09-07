@@ -234,7 +234,7 @@ export const SettingsView: React.FC = () => {
             <span className="material-symbols-outlined text-[20px] text-white">android</span>
           </h3>
           <p className="text-xs text-[#a3a3a3] mb-5">
-            Download the native Android container built with Capacitor to receive system alarms and Firebase push notifications directly on your Android phone.
+            Download the native FocusTrack Android application (React Native + Expo) to track your habit protocols, receive reminders, and monitor consistency directly on your phone.
           </p>
           <a
             href="/downloads/FocusTrack-Android.apk"
