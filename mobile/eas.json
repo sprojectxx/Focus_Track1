@@ -16,6 +16,10 @@
     "production": {
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://pdslurkkvqaptaomdrvm.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_2vWALIbk0Tf19PziC_Gafg_ePGKItQK"
       }
     }
   },
