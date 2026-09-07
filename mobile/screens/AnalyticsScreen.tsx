@@ -33,13 +33,13 @@ const HEATMAP_COLORS: Record<number, string> = {
 };
 
 export const AnalyticsScreen: React.FC = () => {
-  const { activeHabits, loading, refreshing, error, refreshHabits, stats } = useHabits();
+  const { habits, activeHabits, loading, refreshing, error, refreshHabits, stats } = useHabits();
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
 
   const totalRepetitions = useMemo(
-    () => calculateTotalRepetitions(activeHabits),
-    [activeHabits]
+    () => calculateTotalRepetitions(habits),
+    [habits]
   );
 
   const overallStreaks = useMemo(() => {
@@ -55,13 +55,13 @@ export const AnalyticsScreen: React.FC = () => {
   }, [activeHabits]);
 
   const heatmapWeeks = useMemo(
-    () => calculateHeatmapWeeks(activeHabits, selectedYear),
-    [activeHabits, selectedYear]
+    () => calculateHeatmapWeeks(habits, selectedYear),
+    [habits, selectedYear]
   );
 
   const monthlyRates = useMemo(
-    () => calculateMonthlyRates(activeHabits, selectedYear),
-    [activeHabits, selectedYear]
+    () => calculateMonthlyRates(habits, selectedYear),
+    [habits, selectedYear]
   );
 
   if (loading && !refreshing) {

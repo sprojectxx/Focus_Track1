@@ -57,6 +57,15 @@ export function parseYMD(dateStr: string): { year: number; month: number; day: n
 }
 
 /**
+ * Parses 'YYYY-MM-DD' into a local Date object at midnight (00:00:00 local time).
+ */
+export function parseYMDToLocalDate(dateStr: string): Date | null {
+  const parsed = parseYMD(dateStr);
+  if (!parsed) return null;
+  return new Date(parsed.year, parsed.month - 1, parsed.day);
+}
+
+/**
  * Returns true if dateStr matches today's local 'YYYY-MM-DD'.
  */
 export function isToday(dateStr: string, timeZone: string = getDeviceTimeZone()): boolean {

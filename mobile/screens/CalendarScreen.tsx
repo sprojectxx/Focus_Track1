@@ -33,6 +33,7 @@ const WEEKDAY_NAMES = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 
 export const CalendarScreen: React.FC = () => {
   const {
+    habits,
     activeHabits,
     loading,
     refreshing,
@@ -165,8 +166,8 @@ export const CalendarScreen: React.FC = () => {
             const isTodayCell = isToday(dateKey, timeZone);
             const isSelected = selectedDateStr === dateKey;
 
-            // Habits completed on this day
-            const completedHabits = activeHabits.filter((h) => !!h.history[dateKey]);
+            // Habits completed on this day (active + archived)
+            const completedHabits = habits.filter((h) => !!h.history[dateKey]);
 
             return (
               <TouchableOpacity
@@ -241,14 +242,22 @@ export const CalendarScreen: React.FC = () => {
             </View>
 
             <ScrollView style={styles.modalBody}>
-              {activeHabits.length === 0 ? (
-                <Text style={[typography.bodySecondary, styles.emptyText]}>
-                  No active habit protocols configured.
-                </Text>
-              ) : (
-                activeHabits.map((habit) => {
+              {(() => {
+                const isTodaySelected = selectedDateStr ? isToday(selectedDateStr, timeZone) : false;
+                const relevantHabits = isTodaySelected
+                  ? activeHabits
+                  : habits.filter((h) => selectedDateStr && (h.createdAt || '').slice(0, 10) <= selectedDateStr);
+
+                if (relevantHabits.length === 0) {
+                  return (
+                    <Text style={[typography.bodySecondary, styles.emptyText]}>
+                      No habit protocols configured or due on this date.
+                    </Text>
+                  );
+                }
+
+                return relevantHabits.map((habit) => {
                   const isDone = selectedDateStr ? !!habit.history[selectedDateStr] : false;
-                  const isTodaySelected = selectedDateStr ? isToday(selectedDateStr, timeZone) : false;
 
                   return (
                     <View key={habit.id} style={styles.drawerHabitRow}>
@@ -281,8 +290,8 @@ export const CalendarScreen: React.FC = () => {
                       )}
                     </View>
                   );
-                })
-              )}
+                });
+              })()}
             </ScrollView>
           </View>
         </View>

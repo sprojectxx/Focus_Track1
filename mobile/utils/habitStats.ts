@@ -1,16 +1,17 @@
 import { Habit, HabitStats } from '../types';
-import { getTodayYMD, getDaysInMonth, getFocusTrackDayIndex, formatYMD } from './date';
+import {
+  getTodayYMD,
+  getDaysInMonth,
+  getFocusTrackDayIndex,
+  formatYMD,
+  parseYMDToLocalDate,
+} from './date';
 
-function parseDateKey(dateStr: string): Date {
-  const [y, m, d] = dateStr.split('-').map((s) => parseInt(s, 10));
-  return new Date(y, m - 1, d);
-}
-
-function formatDateKey(d: Date): string {
-  const y = d.getFullYear();
-  const m = (d.getMonth() + 1).toString().padStart(2, '0');
-  const day = d.getDate().toString().padStart(2, '0');
-  return `${y}-${m}-${day}`;
+function getCleanCreatedAtYMD(createdAt?: string, fallbackTodayStr: string = getTodayYMD()): string {
+  if (!createdAt || typeof createdAt !== 'string') return fallbackTodayStr;
+  const clean = createdAt.slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) return clean;
+  return fallbackTodayStr;
 }
 
 export function calculateHabitStats(
@@ -19,13 +20,7 @@ export function calculateHabitStats(
   viewingMonth?: number,
   todayStr: string = getTodayYMD()
 ): HabitStats {
-  const todayDate = parseDateKey(todayStr);
-
-  let startDate = parseDateKey(habit.createdAt || todayStr);
-  if (isNaN(startDate.getTime()) || startDate > todayDate) {
-    startDate = new Date(todayDate);
-  }
-
+  const createdAtYMD = getCleanCreatedAtYMD(habit.createdAt, todayStr);
   const scheduleDays = habit.scheduleDays || [0, 1, 2, 3, 4, 5, 6];
 
   let monthDueCount = 0;
@@ -34,30 +29,39 @@ export function calculateHabitStats(
   if (viewingYear !== undefined && viewingMonth !== undefined) {
     const daysInMonth = getDaysInMonth(viewingYear, viewingMonth);
     for (let d = 1; d <= daysInMonth; d++) {
-      const dStr = d.toString().padStart(2, '0');
-      const mStr = viewingMonth.toString().padStart(2, '0');
-      const dateKey = `${viewingYear}-${mStr}-${dStr}`;
-      const dateObj = parseDateKey(dateKey);
-
-      if (dateObj >= startDate && dateObj <= todayDate) {
-        const ftDayIndex = getFocusTrackDayIndex(dateObj);
-        if (scheduleDays.includes(ftDayIndex)) {
-          monthDueCount++;
-          if (habit.history[dateKey]) {
-            monthCompletedCount++;
+      const dateKey = formatYMD(viewingYear, viewingMonth, d);
+      if (dateKey >= createdAtYMD && dateKey <= todayStr) {
+        const dateObj = parseYMDToLocalDate(dateKey);
+        if (dateObj) {
+          const ftDayIndex = getFocusTrackDayIndex(dateObj);
+          if (scheduleDays.includes(ftDayIndex)) {
+            monthDueCount++;
+            if (habit.history[dateKey]) {
+              monthCompletedCount++;
+            }
           }
         }
       }
     }
   } else {
-    const current = new Date(startDate);
-    while (current <= todayDate) {
-      const dateKey = formatDateKey(current);
-      const ftDayIndex = getFocusTrackDayIndex(current);
-      if (scheduleDays.includes(ftDayIndex)) {
-        monthDueCount++;
-        if (habit.history[dateKey]) {
-          monthCompletedCount++;
+    // Total lifetime due & completed up to today
+    const startObj = parseYMDToLocalDate(createdAtYMD) || parseYMDToLocalDate(todayStr)!;
+    const todayObj = parseYMDToLocalDate(todayStr)!;
+    const current = new Date(startObj);
+
+    while (current <= todayObj) {
+      const y = current.getFullYear();
+      const m = current.getMonth() + 1;
+      const d = current.getDate();
+      const dateKey = formatYMD(y, m, d);
+
+      if (dateKey <= todayStr) {
+        const ftDayIndex = getFocusTrackDayIndex(current);
+        if (scheduleDays.includes(ftDayIndex)) {
+          monthDueCount++;
+          if (habit.history[dateKey]) {
+            monthCompletedCount++;
+          }
         }
       }
       current.setDate(current.getDate() + 1);
@@ -67,15 +71,23 @@ export function calculateHabitStats(
   const missedCount = Math.max(0, monthDueCount - monthCompletedCount);
   const completionRate = monthDueCount > 0 ? Math.round((monthCompletedCount / monthDueCount) * 100) : 0;
 
+  // Streak Calculation (respecting scheduleDays and createdAt, unscheduled days do NOT break streak)
   let currentStreak = 0;
   let bestStreak = 0;
   let runningStreak = 0;
 
-  const scanDate = new Date(startDate);
-  while (scanDate <= todayDate) {
-    const ftDayIndex = getFocusTrackDayIndex(scanDate);
+  const startObj = parseYMDToLocalDate(createdAtYMD) || parseYMDToLocalDate(todayStr)!;
+  const todayObj = parseYMDToLocalDate(todayStr)!;
+  const cursor = new Date(startObj);
+
+  while (cursor <= todayObj) {
+    const y = cursor.getFullYear();
+    const m = cursor.getMonth() + 1;
+    const d = cursor.getDate();
+    const dateKey = formatYMD(y, m, d);
+
+    const ftDayIndex = getFocusTrackDayIndex(cursor);
     if (scheduleDays.includes(ftDayIndex)) {
-      const dateKey = formatDateKey(scanDate);
       const isDone = !!habit.history[dateKey];
       const isTodayScan = dateKey === todayStr;
 
@@ -90,10 +102,11 @@ export function calculateHabitStats(
         }
       }
     }
-    scanDate.setDate(scanDate.getDate() + 1);
+    cursor.setDate(cursor.getDate() + 1);
   }
   currentStreak = runningStreak;
 
+  // 8-Week Trajectory Bars
   const trajectoryBars: Array<{
     week: string;
     value: number;
@@ -101,7 +114,7 @@ export function calculateHabitStats(
     isEmpty: boolean;
   }> = [];
 
-  const currentWeekEnd = new Date(todayDate);
+  const currentWeekEnd = parseYMDToLocalDate(todayStr) || new Date();
   const daysUntilSunday = (7 - currentWeekEnd.getDay()) % 7;
   currentWeekEnd.setDate(currentWeekEnd.getDate() + daysUntilSunday);
 
@@ -117,11 +130,15 @@ export function calculateHabitStats(
 
     const dayCursor = new Date(weekStart);
     while (dayCursor <= weekEnd) {
-      if (dayCursor >= startDate && dayCursor <= todayDate) {
+      const y = dayCursor.getFullYear();
+      const m = dayCursor.getMonth() + 1;
+      const d = dayCursor.getDate();
+      const dateKey = formatYMD(y, m, d);
+
+      if (dateKey >= createdAtYMD && dateKey <= todayStr) {
         const ftDayIndex = getFocusTrackDayIndex(dayCursor);
         if (scheduleDays.includes(ftDayIndex)) {
           weekDue++;
-          const dateKey = formatDateKey(dayCursor);
           if (habit.history[dateKey]) {
             weekCompleted++;
           }
@@ -170,48 +187,126 @@ export function calculateTotalRepetitions(habits: Habit[]): number {
   return total;
 }
 
+export function calculateOverallConsistency(
+  habits: Habit[],
+  todayStr: string = getTodayYMD()
+): number {
+  let totalDue = 0;
+  let totalCompleted = 0;
+
+  habits.forEach((h) => {
+    const createdAtYMD = getCleanCreatedAtYMD(h.createdAt, todayStr);
+    const scheduleDays = h.scheduleDays || [0, 1, 2, 3, 4, 5, 6];
+
+    const startObj = parseYMDToLocalDate(createdAtYMD) || parseYMDToLocalDate(todayStr)!;
+    const todayObj = parseYMDToLocalDate(todayStr)!;
+    const cursor = new Date(startObj);
+
+    while (cursor <= todayObj) {
+      const y = cursor.getFullYear();
+      const m = cursor.getMonth() + 1;
+      const d = cursor.getDate();
+      const dateKey = formatYMD(y, m, d);
+
+      if (dateKey <= todayStr) {
+        const ftDayIndex = getFocusTrackDayIndex(cursor);
+        if (scheduleDays.includes(ftDayIndex)) {
+          totalDue++;
+          if (h.history[dateKey]) {
+            totalCompleted++;
+          }
+        }
+      }
+      cursor.setDate(cursor.getDate() + 1);
+    }
+  });
+
+  return totalDue > 0 ? Math.round((totalCompleted / totalDue) * 100) : 0;
+}
+
 export interface HeatmapCell {
   dateStr: string;
   count: number;
+  dueCount: number;
   level: number; // 0 to 4
+  isFuture: boolean;
 }
 
-export function calculateHeatmapWeeks(habits: Habit[], selectedYear: number): HeatmapCell[][] {
-  const weeks: HeatmapCell[][] = [];
-  const startDate = new Date(selectedYear, 0, 1);
-  const dayOfWeek = (startDate.getDay() + 6) % 7; // 0=Mon, 6=Sun
-  const current = new Date(startDate);
-  current.setDate(current.getDate() - dayOfWeek);
+export function calculateHeatmapWeeks(
+  habits: Habit[],
+  selectedYear: number,
+  todayStr: string = getTodayYMD()
+): HeatmapCell[][] {
+  const currentYear = parseYMDToLocalDate(todayStr)?.getFullYear() || new Date().getFullYear();
 
-  for (let w = 0; w < 53; w++) {
+  let endSunday: Date;
+  if (selectedYear === currentYear) {
+    const todayObj = parseYMDToLocalDate(todayStr) || new Date();
+    const daysUntilSunday = (7 - todayObj.getDay()) % 7;
+    endSunday = new Date(todayObj);
+    endSunday.setDate(endSunday.getDate() + daysUntilSunday);
+  } else {
+    // Last Sunday of the selected year
+    endSunday = new Date(selectedYear, 11, 31);
+    const daysUntilSunday = (7 - endSunday.getDay()) % 7;
+    endSunday.setDate(endSunday.getDate() + daysUntilSunday);
+  }
+
+  // Exactly 52 weeks x 7 days = 364 days
+  const startMonday = new Date(endSunday);
+  startMonday.setDate(startMonday.getDate() - (52 * 7 - 1));
+
+  const cursor = new Date(startMonday);
+  const weeks: HeatmapCell[][] = [];
+
+  for (let w = 0; w < 52; w++) {
     const week: HeatmapCell[] = [];
     for (let d = 0; d < 7; d++) {
-      const year = current.getFullYear();
-      const monthStr = (current.getMonth() + 1).toString().padStart(2, '0');
-      const dayStr = current.getDate().toString().padStart(2, '0');
-      const key = `${year}-${monthStr}-${dayStr}`;
+      const y = cursor.getFullYear();
+      const m = cursor.getMonth() + 1;
+      const day = cursor.getDate();
+      const key = formatYMD(y, m, day);
 
+      const isFuture = key > todayStr;
       let completedCount = 0;
-      habits.forEach((h) => {
-        if (h.history[key]) completedCount++;
-      });
+      let dueCount = 0;
+
+      if (!isFuture) {
+        const ftDayIndex = getFocusTrackDayIndex(cursor);
+        habits.forEach((h) => {
+          const createdAtYMD = getCleanCreatedAtYMD(h.createdAt, todayStr);
+          const scheduleDays = h.scheduleDays || [0, 1, 2, 3, 4, 5, 6];
+
+          if (key >= createdAtYMD && scheduleDays.includes(ftDayIndex)) {
+            dueCount++;
+            if (h.history[key]) {
+              completedCount++;
+            }
+          }
+        });
+      }
 
       let level = 0;
-      if (completedCount >= 4) level = 4;
-      else if (completedCount === 3) level = 3;
-      else if (completedCount === 2) level = 2;
-      else if (completedCount === 1) level = 1;
+      if (!isFuture && dueCount > 0) {
+        const ratio = completedCount / dueCount;
+        if (ratio >= 1.0) level = 4;
+        else if (ratio > 0.5) level = 3;
+        else if (ratio > 0.25) level = 2;
+        else if (ratio > 0) level = 1;
+        else level = 0;
+      }
 
       week.push({
         dateStr: key,
         count: completedCount,
+        dueCount,
         level,
+        isFuture,
       });
 
-      current.setDate(current.getDate() + 1);
+      cursor.setDate(cursor.getDate() + 1);
     }
     weeks.push(week);
-    if (current.getFullYear() > selectedYear && w >= 51) break;
   }
   return weeks;
 }
@@ -219,23 +314,49 @@ export function calculateHeatmapWeeks(habits: Habit[], selectedYear: number): He
 export interface MonthlyRate {
   month: string;
   rate: number;
+  dueCount: number;
+  completedCount: number;
 }
 
-export function calculateMonthlyRates(habits: Habit[], selectedYear: number): MonthlyRate[] {
+export function calculateMonthlyRates(
+  habits: Habit[],
+  selectedYear: number,
+  todayStr: string = getTodayYMD()
+): MonthlyRate[] {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   return months.map((monthName, monthIndex) => {
-    const daysInMonth = new Date(selectedYear, monthIndex + 1, 0).getDate();
+    const daysInMonth = getDaysInMonth(selectedYear, monthIndex + 1);
+    let monthDue = 0;
     let monthCompleted = 0;
-    let monthTotalPossible = habits.length * daysInMonth;
 
     for (let day = 1; day <= daysInMonth; day++) {
-      const dateKey = `${selectedYear}-${(monthIndex + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-      habits.forEach((h) => {
-        if (h.history[dateKey]) monthCompleted++;
-      });
+      const dateKey = formatYMD(selectedYear, monthIndex + 1, day);
+      if (dateKey <= todayStr) {
+        const dateObj = parseYMDToLocalDate(dateKey);
+        if (dateObj) {
+          const ftDayIndex = getFocusTrackDayIndex(dateObj);
+          habits.forEach((h) => {
+            const createdAtYMD = getCleanCreatedAtYMD(h.createdAt, todayStr);
+            const scheduleDays = h.scheduleDays || [0, 1, 2, 3, 4, 5, 6];
+
+            if (dateKey >= createdAtYMD && scheduleDays.includes(ftDayIndex)) {
+              monthDue++;
+              if (h.history[dateKey]) {
+                monthCompleted++;
+              }
+            }
+          });
+        }
+      }
     }
 
-    const rate = monthTotalPossible > 0 ? Math.round((monthCompleted / monthTotalPossible) * 100) : 0;
-    return { month: monthName, rate };
+    const rate = monthDue > 0 ? Math.round((monthCompleted / monthDue) * 100) : 0;
+    return {
+      month: monthName,
+      rate,
+      dueCount: monthDue,
+      completedCount: monthCompleted,
+    };
   });
 }
+

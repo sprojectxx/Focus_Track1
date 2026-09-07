@@ -4,6 +4,7 @@ import { Habit } from '../types';
 import { getTodayYMD, isToday, getElapsedDaysInMonth, getDeviceTimeZone } from '../utils/date';
 import { syncUserTimeZone } from '../lib/profileService';
 import { syncHabitReminders, scheduleHabitReminder, cancelHabitReminder } from '../lib/notificationService';
+import { calculateOverallConsistency } from '../utils/habitStats';
 import {
   fetchUserHabits,
   toggleHabitCompletionInSupabase,
@@ -215,27 +216,17 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
 
     const todayCompletionRate = todayDueCount > 0 ? Math.round((todayCompletedCount / todayDueCount) * 100) : 0;
-    const elapsedDays = getElapsedDaysInMonth(viewingYear, viewingMonth);
-    let monthDueTotal = 0;
-    let monthCompletedTotal = 0;
+    const overallCompletion = calculateOverallConsistency(habits, todayStr);
 
-    for (let d = 1; d <= elapsedDays; d++) {
-      const dStr = d.toString().padStart(2, '0');
-      const mStr = viewingMonth.toString().padStart(2, '0');
-      const dateKey = `${viewingYear}-${mStr}-${dStr}`;
-      const dObj = new Date(viewingYear, viewingMonth - 1, d);
-      const ftDayIdx = (dObj.getDay() + 6) % 7;
-      activeHabits.forEach((h) => {
-        if (h.scheduleDays.includes(ftDayIdx)) {
-          monthDueTotal++;
-          if (h.history[dateKey]) monthCompletedTotal++;
-        }
-      });
-    }
-
-    const overallCompletion = monthDueTotal > 0 ? Math.round((monthCompletedTotal / monthDueTotal) * 100) : 0;
-    return { todayDueCount, todayCompletedCount, todayCompletionRate, overallCompletion, currentStreak: 0, bestStreak: 0 };
-  }, [activeHabits, todayStr, viewingYear, viewingMonth, now]);
+    return {
+      todayDueCount,
+      todayCompletedCount,
+      todayCompletionRate,
+      overallCompletion,
+      currentStreak: 0,
+      bestStreak: 0,
+    };
+  }, [activeHabits, habits, todayStr, now]);
 
   return (
     <HabitContext.Provider value={{ habits, activeHabits, archivedHabits, loading, refreshing, error, selectedDateStr, viewingYear, viewingMonth, refreshHabits: () => loadHabits(true), toggleTodayHabit, createHabit, updateHabit, archiveHabit, unarchiveHabit, deleteHabit, stats }}>

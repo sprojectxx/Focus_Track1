@@ -210,12 +210,22 @@ export const HabitDetailScreen: React.FC<HabitDetailScreenProps> = ({ habitId })
             const mStr = (d.getMonth() + 1).toString().padStart(2, '0');
             const dayStr = d.getDate().toString().padStart(2, '0');
             const dateKey = `${yStr}-${mStr}-${dayStr}`;
+            const createdAtYMD = (habit.createdAt || '').slice(0, 10);
+            const isBeforeCreation = createdAtYMD ? dateKey < createdAtYMD : false;
+            const ftDayIndex = (d.getDay() + 6) % 7; // 0=Mon, 6=Sun
+            const isScheduled = (habit.scheduleDays || [0, 1, 2, 3, 4, 5, 6]).includes(ftDayIndex);
+
             const isDone = !!habit.history[dateKey];
             const dateLabel = d.toLocaleDateString('en-US', {
               weekday: 'short',
               month: 'short',
               day: 'numeric',
             }).toUpperCase();
+
+            let statusText = 'NO LOG';
+            if (isBeforeCreation) statusText = 'BEFORE CREATION';
+            else if (!isScheduled) statusText = 'OFF DAY';
+            else if (isDone) statusText = 'COMPLETED';
 
             return (
               <View key={dateKey} style={styles.historyRow}>
@@ -227,7 +237,7 @@ export const HabitDetailScreen: React.FC<HabitDetailScreenProps> = ({ habitId })
                   ]}
                 >
                   <Ionicons
-                    name={isDone ? 'checkmark' : 'close'}
+                    name={isDone ? 'checkmark' : isBeforeCreation || !isScheduled ? 'ellipse-outline' : 'close'}
                     size={12}
                     color={isDone ? colors.textPrimary : colors.textMuted}
                   />
@@ -237,7 +247,7 @@ export const HabitDetailScreen: React.FC<HabitDetailScreenProps> = ({ habitId })
                       isDone ? styles.historyTextDone : styles.historyTextMissed,
                     ]}
                   >
-                    {isDone ? 'COMPLETED' : 'NO LOG'}
+                    {statusText}
                   </Text>
                 </View>
               </View>
