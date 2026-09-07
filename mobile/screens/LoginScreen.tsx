@@ -166,6 +166,7 @@ export const LoginScreen: React.FC = () => {
                     onPress={() => setShowPassword((prev) => !prev)}
                     style={styles.eyeButton}
                     activeOpacity={0.7}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     accessibilityLabel={showPassword ? 'Hide Password' : 'Show Password'}
                     accessibilityRole="button"
                   >

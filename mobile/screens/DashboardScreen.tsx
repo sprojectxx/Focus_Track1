@@ -229,6 +229,7 @@ export const DashboardScreen: React.FC = () => {
                             }
                           }}
                           activeOpacity={isCellToday ? 0.7 : 1}
+                          hitSlop={isCellToday ? { top: 6, bottom: 6, left: 4, right: 4 } : undefined}
                         >
                           {isCompleted ? (
                             <Ionicons

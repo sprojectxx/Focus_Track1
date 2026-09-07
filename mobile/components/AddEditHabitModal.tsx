@@ -178,7 +178,12 @@ export const AddEditHabitModal: React.FC<AddEditHabitModalProps> = ({
             <Text style={typography.h2}>
               {editingHabit ? 'EDIT PROTOCOL' : 'CREATE NEW PROTOCOL'}
             </Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton} activeOpacity={0.7}>
+            <TouchableOpacity
+              onPress={onClose}
+              style={styles.closeButton}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
               <Ionicons name="close" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
           </View>
@@ -219,6 +224,7 @@ export const AddEditHabitModal: React.FC<AddEditHabitModalProps> = ({
                       }
                     }}
                     activeOpacity={0.8}
+                    hitSlop={{ top: 6, bottom: 6, left: 2, right: 2 }}
                   >
                     <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
                       {domain}
@@ -248,6 +254,7 @@ export const AddEditHabitModal: React.FC<AddEditHabitModalProps> = ({
                     style={[styles.priorityChip, isSelected && styles.priorityChipSelected]}
                     onPress={() => setPriority(p)}
                     activeOpacity={0.8}
+                    hitSlop={{ top: 4, bottom: 4, left: 2, right: 2 }}
                   >
                     <Text
                       style={[
@@ -273,6 +280,7 @@ export const AddEditHabitModal: React.FC<AddEditHabitModalProps> = ({
                     style={[styles.dayChip, isSelected && styles.dayChipSelected]}
                     onPress={() => toggleDay(w.index)}
                     activeOpacity={0.8}
+                    hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
                   >
                     <Text style={[styles.dayChipText, isSelected && styles.dayChipTextSelected]}>
                       {w.label}
@@ -296,6 +304,7 @@ export const AddEditHabitModal: React.FC<AddEditHabitModalProps> = ({
                     style={[styles.iconChip, isSelected && styles.iconChipSelected]}
                     onPress={() => setIcon(iconName)}
                     activeOpacity={0.8}
+                    hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
                   >
                     <Ionicons
                       name={iconName as any}
@@ -320,6 +329,7 @@ export const AddEditHabitModal: React.FC<AddEditHabitModalProps> = ({
                     style={[styles.priorityChip, isSelected && styles.priorityChipSelected]}
                     onPress={() => setFocusMinutes(mins)}
                     activeOpacity={0.8}
+                    hitSlop={{ top: 4, bottom: 4, left: 2, right: 2 }}
                   >
                     <Text
                       style={[

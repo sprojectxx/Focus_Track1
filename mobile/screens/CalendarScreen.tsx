@@ -117,13 +117,19 @@ export const CalendarScreen: React.FC = () => {
 
           {/* Month Controls */}
           <View style={styles.navRow}>
-            <TouchableOpacity onPress={prevMonth} style={styles.navButton} activeOpacity={0.7}>
+            <TouchableOpacity
+              onPress={prevMonth}
+              style={styles.navButton}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
               <Ionicons name="chevron-back" size={16} color={colors.textPrimary} />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={goToToday}
               style={[styles.todayButton, isCurrentViewingMonth && styles.todayButtonActive]}
               activeOpacity={0.7}
+              hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
             >
               <Text
                 style={[
@@ -134,7 +140,12 @@ export const CalendarScreen: React.FC = () => {
                 TODAY
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={nextMonth} style={styles.navButton} activeOpacity={0.7}>
+            <TouchableOpacity
+              onPress={nextMonth}
+              style={styles.navButton}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
               <Ionicons name="chevron-forward" size={16} color={colors.textPrimary} />
             </TouchableOpacity>
           </View>
@@ -182,6 +193,7 @@ export const CalendarScreen: React.FC = () => {
                 ]}
                 onPress={() => handleCellPress(dateKey, true)}
                 activeOpacity={0.8}
+                hitSlop={{ top: 2, bottom: 2, left: 2, right: 2 }}
               >
                 <View style={styles.cellTop}>
                   <Text
@@ -239,6 +251,7 @@ export const CalendarScreen: React.FC = () => {
               <TouchableOpacity
                 onPress={() => setIsDailyDrawerOpen(false)}
                 style={styles.modalCloseButton}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
                 <Ionicons name="close" size={24} color={colors.textPrimary} />
               </TouchableOpacity>

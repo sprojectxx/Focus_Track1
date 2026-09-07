@@ -160,7 +160,10 @@ export const HabitsScreen: React.FC<HabitsScreenProps> = ({
           placeholder="Filter by protocol name or domain..."
           rightAction={
             searchQuery ? (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <TouchableOpacity
+                onPress={() => setSearchQuery('')}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
                 <Ionicons name="close-circle" size={18} color={colors.textMuted} />
               </TouchableOpacity>
             ) : null
@@ -182,6 +185,7 @@ export const HabitsScreen: React.FC<HabitsScreenProps> = ({
                 style={[styles.domainChip, isSelected && styles.domainChipSelected]}
                 onPress={() => setSelectedDomain(domain)}
                 activeOpacity={0.8}
+                hitSlop={{ top: 6, bottom: 6, left: 2, right: 2 }}
               >
                 <Text
                   style={[styles.domainChipText, isSelected && styles.domainChipTextSelected]}

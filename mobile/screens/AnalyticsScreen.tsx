@@ -133,6 +133,7 @@ export const AnalyticsScreen: React.FC = () => {
                     onPress={() => setSelectedYear((y) => y - 1)}
                     style={styles.yearNavButton}
                     activeOpacity={0.7}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
                     <Ionicons name="chevron-back" size={16} color={colors.textPrimary} />
                   </TouchableOpacity>
@@ -141,6 +142,7 @@ export const AnalyticsScreen: React.FC = () => {
                     onPress={() => setSelectedYear((y) => y + 1)}
                     style={styles.yearNavButton}
                     activeOpacity={0.7}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
                     <Ionicons name="chevron-forward" size={16} color={colors.textPrimary} />
                   </TouchableOpacity>
