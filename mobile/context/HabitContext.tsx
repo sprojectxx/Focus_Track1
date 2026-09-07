@@ -164,11 +164,11 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated.');
       const current = habits.find((h) => h.id === habitId);
-      const { archivedAt } = await setHabitArchivedInSupabase(user.id, habitId, true, current);
+      const { archivedAt } = await setHabitArchivedInSupabase(user.id, habitId, true, current, timeZone);
       await cancelHabitReminder(habitId);
       setHabits((prev) =>
         prev.map((h) =>
-          h.id === habitId ? { ...h, isArchived: true, archivedAt: archivedAt || new Date().toISOString().split('T')[0] } : h
+          h.id === habitId ? { ...h, isArchived: true, archivedAt: archivedAt || todayStr } : h
         )
       );
     } catch (err: any) {
@@ -182,7 +182,10 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated.');
       const target = habits.find((h) => h.id === habitId);
-      const { archivedIntervals } = await setHabitArchivedInSupabase(user.id, habitId, false, target);
+      if (!target?.archivedAt) {
+        throw new Error('Cannot restore habit: archived boundary is missing.');
+      }
+      const { archivedIntervals } = await setHabitArchivedInSupabase(user.id, habitId, false, target, timeZone);
       setHabits((prev) =>
         prev.map((h) =>
           h.id === habitId
@@ -191,7 +194,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         )
       );
       if (target) {
-        try { await scheduleHabitReminder({ ...target, isArchived: false }); } catch (notificationError) {
+        try { await scheduleHabitReminder({ ...target, isArchived: false, archivedAt: undefined }); } catch (notificationError) {
           console.warn('[HabitContext] Restored habit reminder could not be scheduled:', notificationError);
         }
       }

@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 import { Habit } from '../types';
-import { isToday } from '../utils/date';
+import { isToday, getTodayYMD } from '../utils/date';
 
 const isUUID = (str: string): boolean =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
@@ -62,7 +62,7 @@ export async function fetchUserHabits(userId: string): Promise<Habit[]> {
       isArchived: h.is_archived ?? false,
       archivedAt: h.archived_at ? h.archived_at.split('T')[0] : undefined,
       archivedIntervals: h.archived_intervals || undefined,
-      createdAt: h.created_at ? h.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+      createdAt: h.created_at ? h.created_at.split('T')[0] : getTodayYMD(),
       history,
     };
   });
@@ -194,7 +194,7 @@ export async function createHabitInSupabase(
     targetTime: data.target_time,
     focusMinutesPerSession: data.focus_minutes_per_session,
     isArchived: false,
-    createdAt: data.created_at ? data.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+    createdAt: data.created_at ? data.created_at.split('T')[0] : getTodayYMD(),
     history: {},
   };
 }
@@ -232,9 +232,10 @@ export async function setHabitArchivedInSupabase(
   userId: string,
   habitId: string,
   isArchived: boolean,
-  currentHabit?: Habit
+  currentHabit?: Habit,
+  timeZone?: string
 ): Promise<{ archivedAt?: string; archivedIntervals?: Array<{ archivedAt: string; restoredAt: string }> }> {
-  const todayYMD = new Date().toISOString().split('T')[0];
+  const todayYMD = getTodayYMD(timeZone);
   let updatePayload: Record<string, any> = { is_archived: isArchived };
   let newArchivedAt: string | undefined = undefined;
   let newArchivedIntervals: Array<{ archivedAt: string; restoredAt: string }> | undefined = currentHabit?.archivedIntervals;
@@ -243,27 +244,28 @@ export async function setHabitArchivedInSupabase(
     newArchivedAt = todayYMD;
     updatePayload.archived_at = new Date().toISOString();
   } else {
-    // Restoring
-    updatePayload.archived_at = null;
-    const previousArchivedAt = currentHabit?.archivedAt || todayYMD;
+    // Restoring: archivedAt MUST exist and be valid
+    const previousArchivedAt = currentHabit?.archivedAt ? currentHabit.archivedAt.slice(0, 10) : '';
+    if (!previousArchivedAt || !/^\d{4}-\d{2}-\d{2}$/.test(previousArchivedAt)) {
+      throw new Error('Cannot restore habit: archived boundary is missing.');
+    }
+
     const closedInterval = { archivedAt: previousArchivedAt, restoredAt: todayYMD };
     newArchivedIntervals = [...(currentHabit?.archivedIntervals || []), closedInterval];
+    updatePayload.archived_at = null;
     updatePayload.archived_intervals = newArchivedIntervals;
     newArchivedAt = undefined;
   }
 
+  // Mandatory atomic Supabase update without silent fallback
   const { error } = await supabase
     .from('habits')
     .update(updatePayload)
     .match({ id: habitId, user_id: userId });
 
   if (error) {
-    console.warn('[HabitService] Full archive payload update notice, retrying core archive state:', error.message);
-    const { error: fallbackErr } = await supabase
-      .from('habits')
-      .update({ is_archived: isArchived })
-      .match({ id: habitId, user_id: userId });
-    if (fallbackErr) throw fallbackErr;
+    console.error('[HabitService] Failed to persist archive boundary:', error);
+    throw error;
   }
 
   return { archivedAt: newArchivedAt, archivedIntervals: newArchivedIntervals };

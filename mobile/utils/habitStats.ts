@@ -47,10 +47,10 @@ export function isHabitDueOnDate(
   const scheduleDays = habit.scheduleDays || [0, 1, 2, 3, 4, 5, 6];
   if (!scheduleDays.includes(ftDayIndex)) return false;
 
-  // 4. Current archive boundary check
+  // 4. Current archive boundary check (archivedAt is INACTIVE starting on archivedAt date)
   if (habit.isArchived) {
     const archivedAtYMD = getCleanDateYMD(habit.archivedAt, todayStr);
-    if (dateStr > archivedAtYMD) return false;
+    if (dateStr >= archivedAtYMD) return false;
   }
 
   // 5. Historical archive interval check (for restored habits)

@@ -47,7 +47,9 @@ CREATE TABLE IF NOT EXISTS public.habits (
   icon TEXT DEFAULT 'target', custom_image TEXT, visual_type TEXT DEFAULT 'icon',
   schedule_days INT[] DEFAULT '{0,1,2,3,4,5,6}', schedule_type TEXT DEFAULT 'daily',
   reminder_enabled BOOLEAN DEFAULT FALSE, reminder_time TEXT DEFAULT '08:00', target_time TEXT,
-  focus_minutes_per_session INT DEFAULT 30, is_archived BOOLEAN DEFAULT FALSE, created_at TIMESTAMPTZ DEFAULT NOW()
+  focus_minutes_per_session INT DEFAULT 30, is_archived BOOLEAN DEFAULT FALSE,
+  archived_at TIMESTAMPTZ, archived_intervals JSONB DEFAULT '[]'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE public.habits ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view own habits" ON public.habits FOR SELECT USING (auth.uid() = user_id);
