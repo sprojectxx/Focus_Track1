@@ -96,12 +96,14 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onSignOut }) => 
           <Text style={[typography.h3, styles.sectionTitle]}>AUTHENTICATED ACCOUNT</Text>
           <View style={styles.infoRow}>
             <Text style={typography.caption}>EMAIL</Text>
-            <Text style={typography.body}>{userEmail || 'Loading...'}</Text>
+            <Text style={[typography.body, styles.valueText]} numberOfLines={1} ellipsizeMode="tail">
+              {userEmail || 'Loading...'}
+            </Text>
           </View>
           {userId ? (
             <View style={[styles.infoRow, styles.lastInfoRow]}>
               <Text style={typography.caption}>USER ID</Text>
-              <Text style={[typography.caption, styles.monoText]} numberOfLines={1}>
+              <Text style={[typography.caption, styles.monoText]} numberOfLines={1} ellipsizeMode="middle">
                 {userId}
               </Text>
             </View>
@@ -113,19 +115,21 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onSignOut }) => 
           <Text style={[typography.h3, styles.sectionTitle]}>SYSTEM IDENTITY & ABOUT</Text>
           <View style={styles.infoRow}>
             <Text style={typography.caption}>APPLICATION</Text>
-            <Text style={typography.body}>{appName}</Text>
+            <Text style={[typography.body, styles.valueText]}>{appName}</Text>
           </View>
           <View style={styles.infoRow}>
             <Text style={typography.caption}>VERSION</Text>
-            <Text style={typography.body}>{appVersion}</Text>
+            <Text style={[typography.body, styles.valueText]}>{appVersion}</Text>
           </View>
           <View style={styles.infoRow}>
             <Text style={typography.caption}>PACKAGE ID</Text>
-            <Text style={typography.body}>{packageName}</Text>
+            <Text style={[typography.body, styles.valueText]} numberOfLines={1} ellipsizeMode="middle">
+              {packageName}
+            </Text>
           </View>
           <View style={[styles.infoRow, styles.lastInfoRow]}>
             <Text style={typography.caption}>FRAMEWORK</Text>
-            <Text style={typography.body}>React Native + Expo</Text>
+            <Text style={[typography.body, styles.valueText]}>React Native + Expo</Text>
           </View>
         </View>
 
@@ -221,10 +225,17 @@ const styles = StyleSheet.create({
   lastInfoRow: {
     borderBottomWidth: 0,
   },
+  valueText: {
+    flexShrink: 1,
+    textAlign: 'right',
+    marginLeft: spacing.md,
+  },
   monoText: {
     color: colors.textSecondary,
     fontSize: 11,
     maxWidth: '65%',
+    textAlign: 'right',
+    marginLeft: spacing.md,
   },
   errorContainer: {
     flexDirection: 'row',

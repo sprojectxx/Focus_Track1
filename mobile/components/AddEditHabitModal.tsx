@@ -171,7 +171,7 @@ export const AddEditHabitModal: React.FC<AddEditHabitModalProps> = ({
       <SafeAreaView style={styles.safeArea}>
         <KeyboardAvoidingView
           style={styles.keyboardView}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           {/* Header Bar */}
           <View style={styles.header}>
@@ -188,7 +188,12 @@ export const AddEditHabitModal: React.FC<AddEditHabitModalProps> = ({
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
+          <ScrollView
+            style={styles.body}
+            contentContainerStyle={styles.bodyContent}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+          >
             {/* Habit Name */}
             <TextInputField
               label="Protocol Name"
@@ -397,7 +402,7 @@ const styles = StyleSheet.create({
   },
   bodyContent: {
     padding: spacing.lg,
-    paddingBottom: spacing.xxl,
+    paddingBottom: spacing.xxl + 32,
   },
   sectionLabel: {
     color: colors.textSecondary,

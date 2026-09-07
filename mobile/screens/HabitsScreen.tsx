@@ -114,6 +114,8 @@ export const HabitsScreen: React.FC<HabitsScreenProps> = ({
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

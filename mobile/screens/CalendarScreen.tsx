@@ -257,7 +257,11 @@ export const CalendarScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.modalBody}>
+            <ScrollView
+              style={styles.modalBody}
+              contentContainerStyle={{ paddingBottom: spacing.lg }}
+              showsVerticalScrollIndicator={true}
+            >
               {(() => {
                 const isTodaySelected = selectedDateStr ? isToday(selectedDateStr, timeZone) : false;
                 const relevantHabits = isTodaySelected

@@ -102,22 +102,22 @@ export const AnalyticsScreen: React.FC = () => {
             <View style={styles.bentoGrid}>
               <View style={styles.bentoCard}>
                 <Text style={styles.bentoValue}>{stats.overallCompletion}%</Text>
-                <Text style={typography.caption}>OVERALL CONSISTENCY</Text>
+                <Text style={[typography.caption, styles.bentoLabel]}>OVERALL CONSISTENCY</Text>
               </View>
 
               <View style={styles.bentoCard}>
                 <Text style={styles.bentoValue}>{totalRepetitions}</Text>
-                <Text style={typography.caption}>TOTAL REPETITIONS</Text>
+                <Text style={[typography.caption, styles.bentoLabel]}>TOTAL REPETITIONS</Text>
               </View>
 
               <View style={styles.bentoCard}>
                 <Text style={styles.bentoValue}>{overallStreaks.best}</Text>
-                <Text style={typography.caption}>LONGEST STREAK</Text>
+                <Text style={[typography.caption, styles.bentoLabel]}>LONGEST STREAK</Text>
               </View>
 
               <View style={styles.bentoCard}>
                 <Text style={styles.bentoValue}>{overallStreaks.current}</Text>
-                <Text style={typography.caption}>CURRENT STREAK</Text>
+                <Text style={[typography.caption, styles.bentoLabel]}>CURRENT STREAK</Text>
               </View>
             </View>
 
@@ -250,19 +250,25 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   bentoCard: {
-    width: '48%',
+    width: '47%',
+    minWidth: 140,
+    flexGrow: 1,
     backgroundColor: colors.surface,
     padding: spacing.md,
     borderRadius: spacing.radiusLg,
     borderWidth: 1,
     borderColor: colors.border,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   bentoValue: {
     fontSize: 26,
     fontWeight: '800',
     color: colors.textPrimary,
     marginBottom: spacing.xs,
+  },
+  bentoLabel: {
+    textAlign: 'center',
   },
   sectionCard: {
     backgroundColor: colors.surface,
@@ -274,6 +280,8 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: spacing.md,
