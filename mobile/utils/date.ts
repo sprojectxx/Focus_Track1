@@ -42,6 +42,12 @@ export function getYMDInTimeZone(
   timeZone: string = getDeviceTimeZone()
 ): string {
   try {
+    if (typeof timestamp === 'string') {
+      const trimmed = timestamp.trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+        return trimmed;
+      }
+    }
     const dateObj = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
     if (isNaN(dateObj.getTime())) return getTodayYMD(timeZone);
     const formatter = new Intl.DateTimeFormat('en-CA', {

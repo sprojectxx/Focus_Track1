@@ -246,7 +246,7 @@ export async function setHabitArchivedInSupabase(
     updatePayload.archived_at = new Date().toISOString();
   } else {
     // Restoring: archivedAt MUST exist and be valid
-    const previousArchivedAt = currentHabit?.archivedAt ? currentHabit.archivedAt.slice(0, 10) : '';
+    const previousArchivedAt = currentHabit?.archivedAt ? getYMDInTimeZone(currentHabit.archivedAt, timeZone) : '';
     if (!previousArchivedAt || !/^\d{4}-\d{2}-\d{2}$/.test(previousArchivedAt)) {
       throw new Error('Cannot restore habit: archived boundary is missing.');
     }

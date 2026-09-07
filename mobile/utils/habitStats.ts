@@ -7,15 +7,21 @@ import {
   parseYMDToLocalDate,
   getCalendarMonthGrid,
   getDeviceTimeZone,
+  getYMDInTimeZone,
   isToday,
   isFuture,
 } from './date';
 
-function getCleanDateYMD(dateStr?: string, fallbackTodayStr: string = getTodayYMD()): string {
-  if (!dateStr || typeof dateStr !== 'string') return fallbackTodayStr;
-  const clean = dateStr.slice(0, 10);
-  if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) return clean;
-  return fallbackTodayStr;
+function getCleanDateYMD(
+  dateStr?: string,
+  timeZone: string = getDeviceTimeZone(),
+  fallbackTodayStr?: string
+): string {
+  const fallback = fallbackTodayStr || getTodayYMD(timeZone);
+  if (!dateStr || typeof dateStr !== 'string') return fallback;
+  const trimmed = dateStr.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  return getYMDInTimeZone(trimmed, timeZone);
 }
 
 export interface MonthlyConsistencyCell {
@@ -53,7 +59,7 @@ export function getMonthlyConsistencyMatrix(
 
     if (!isFutureCell) {
       for (const habit of habits) {
-        if (isHabitDueOnDate(habit, dateKey, todayStr)) {
+        if (isHabitDueOnDate(habit, dateKey, todayStr, timeZone)) {
           totalDue++;
           if (habit.history[dateKey]) {
             completedDue++;
@@ -100,7 +106,8 @@ export function getMonthlyConsistencyMatrix(
 export function isHabitDueOnDate(
   habit: Habit,
   dateStr: string,
-  todayStr: string = getTodayYMD()
+  todayStr: string = getTodayYMD(),
+  timeZone: string = getDeviceTimeZone()
 ): boolean {
   if (!dateStr || typeof dateStr !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
     return false;
@@ -110,7 +117,7 @@ export function isHabitDueOnDate(
   if (dateStr > todayStr) return false;
 
   // 2. Cannot be before creation date
-  const createdAtYMD = getCleanDateYMD(habit.createdAt, todayStr);
+  const createdAtYMD = getCleanDateYMD(habit.createdAt, timeZone, todayStr);
   if (dateStr < createdAtYMD) return false;
 
   // 3. Must be a scheduled weekday
@@ -122,15 +129,15 @@ export function isHabitDueOnDate(
 
   // 4. Current archive boundary check (archivedAt is INACTIVE starting on archivedAt date)
   if (habit.isArchived) {
-    const archivedAtYMD = getCleanDateYMD(habit.archivedAt, todayStr);
+    const archivedAtYMD = getCleanDateYMD(habit.archivedAt, timeZone, todayStr);
     if (dateStr >= archivedAtYMD) return false;
   }
 
   // 5. Historical archive interval check (for restored habits)
   if (habit.archivedIntervals && habit.archivedIntervals.length > 0) {
     for (const interval of habit.archivedIntervals) {
-      const archYMD = getCleanDateYMD(interval.archivedAt, todayStr);
-      const restYMD = getCleanDateYMD(interval.restoredAt, todayStr);
+      const archYMD = getCleanDateYMD(interval.archivedAt, timeZone, todayStr);
+      const restYMD = getCleanDateYMD(interval.restoredAt, timeZone, todayStr);
       if (archYMD && restYMD && dateStr >= archYMD && dateStr < restYMD) {
         return false; // Habit was archived during this period
       }
@@ -144,9 +151,10 @@ export function calculateHabitStats(
   habit: Habit,
   viewingYear?: number,
   viewingMonth?: number,
-  todayStr: string = getTodayYMD()
+  todayStr: string = getTodayYMD(),
+  timeZone: string = getDeviceTimeZone()
 ): HabitStats {
-  const createdAtYMD = getCleanDateYMD(habit.createdAt, todayStr);
+  const createdAtYMD = getCleanDateYMD(habit.createdAt, timeZone, todayStr);
   let monthDueCount = 0;
   let monthCompletedCount = 0;
 
@@ -154,7 +162,7 @@ export function calculateHabitStats(
     const daysInMonth = getDaysInMonth(viewingYear, viewingMonth);
     for (let d = 1; d <= daysInMonth; d++) {
       const dateKey = formatYMD(viewingYear, viewingMonth, d);
-      if (isHabitDueOnDate(habit, dateKey, todayStr)) {
+      if (isHabitDueOnDate(habit, dateKey, todayStr, timeZone)) {
         monthDueCount++;
         if (habit.history[dateKey]) {
           monthCompletedCount++;
@@ -173,7 +181,7 @@ export function calculateHabitStats(
       const d = current.getDate();
       const dateKey = formatYMD(y, m, d);
 
-      if (isHabitDueOnDate(habit, dateKey, todayStr)) {
+      if (isHabitDueOnDate(habit, dateKey, todayStr, timeZone)) {
         monthDueCount++;
         if (habit.history[dateKey]) {
           monthCompletedCount++;
@@ -201,7 +209,7 @@ export function calculateHabitStats(
     const d = cursor.getDate();
     const dateKey = formatYMD(y, m, d);
 
-    if (isHabitDueOnDate(habit, dateKey, todayStr)) {
+    if (isHabitDueOnDate(habit, dateKey, todayStr, timeZone)) {
       const isDone = !!habit.history[dateKey];
       const isTodayScan = dateKey === todayStr;
 
@@ -249,7 +257,7 @@ export function calculateHabitStats(
       const d = dayCursor.getDate();
       const dateKey = formatYMD(y, m, d);
 
-      if (isHabitDueOnDate(habit, dateKey, todayStr)) {
+      if (isHabitDueOnDate(habit, dateKey, todayStr, timeZone)) {
         weekDue++;
         if (habit.history[dateKey]) {
           weekCompleted++;
@@ -288,11 +296,15 @@ export function calculateHabitStats(
   };
 }
 
-export function calculateTotalRepetitions(habits: Habit[], todayStr: string = getTodayYMD()): number {
+export function calculateTotalRepetitions(
+  habits: Habit[],
+  todayStr: string = getTodayYMD(),
+  timeZone: string = getDeviceTimeZone()
+): number {
   let total = 0;
   habits.forEach((h) => {
     Object.entries(h.history).forEach(([dateKey, val]) => {
-      if (val && isHabitDueOnDate(h, dateKey, todayStr)) {
+      if (val && isHabitDueOnDate(h, dateKey, todayStr, timeZone)) {
         total++;
       }
     });
@@ -302,13 +314,14 @@ export function calculateTotalRepetitions(habits: Habit[], todayStr: string = ge
 
 export function calculateOverallConsistency(
   habits: Habit[],
-  todayStr: string = getTodayYMD()
+  todayStr: string = getTodayYMD(),
+  timeZone: string = getDeviceTimeZone()
 ): number {
   let totalDue = 0;
   let totalCompleted = 0;
 
   habits.forEach((h) => {
-    const createdAtYMD = getCleanDateYMD(h.createdAt, todayStr);
+    const createdAtYMD = getCleanDateYMD(h.createdAt, timeZone, todayStr);
     const startObj = parseYMDToLocalDate(createdAtYMD) || parseYMDToLocalDate(todayStr)!;
     const todayObj = parseYMDToLocalDate(todayStr)!;
     const cursor = new Date(startObj);
@@ -319,7 +332,7 @@ export function calculateOverallConsistency(
       const d = cursor.getDate();
       const dateKey = formatYMD(y, m, d);
 
-      if (isHabitDueOnDate(h, dateKey, todayStr)) {
+      if (isHabitDueOnDate(h, dateKey, todayStr, timeZone)) {
         totalDue++;
         if (h.history[dateKey]) {
           totalCompleted++;
@@ -343,7 +356,8 @@ export interface HeatmapCell {
 export function calculateHeatmapWeeks(
   habits: Habit[],
   selectedYear: number,
-  todayStr: string = getTodayYMD()
+  todayStr: string = getTodayYMD(),
+  timeZone: string = getDeviceTimeZone()
 ): HeatmapCell[][] {
   const currentYear = parseYMDToLocalDate(todayStr)?.getFullYear() || new Date().getFullYear();
 
@@ -383,7 +397,7 @@ export function calculateHeatmapWeeks(
       let dueCount = 0;
 
       habits.forEach((h) => {
-        if (isHabitDueOnDate(h, key, todayStr)) {
+        if (isHabitDueOnDate(h, key, todayStr, timeZone)) {
           dueCount++;
           if (h.history[key]) {
             completedCount++;
@@ -426,7 +440,8 @@ export interface MonthlyRate {
 export function calculateMonthlyRates(
   habits: Habit[],
   selectedYear: number,
-  todayStr: string = getTodayYMD()
+  todayStr: string = getTodayYMD(),
+  timeZone: string = getDeviceTimeZone()
 ): MonthlyRate[] {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   return months.map((monthName, monthIndex) => {
@@ -437,7 +452,7 @@ export function calculateMonthlyRates(
     for (let day = 1; day <= daysInMonth; day++) {
       const dateKey = formatYMD(selectedYear, monthIndex + 1, day);
       habits.forEach((h) => {
-        if (isHabitDueOnDate(h, dateKey, todayStr)) {
+        if (isHabitDueOnDate(h, dateKey, todayStr, timeZone)) {
           monthDue++;
           if (h.history[dateKey]) {
             monthCompleted++;

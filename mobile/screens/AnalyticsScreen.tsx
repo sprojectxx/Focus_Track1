@@ -56,8 +56,8 @@ export const AnalyticsScreen: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState<number>(parsedToday.month);
 
   const totalRepetitions = useMemo(
-    () => calculateTotalRepetitions(habits),
-    [habits]
+    () => calculateTotalRepetitions(habits, todayStr, timeZone),
+    [habits, todayStr, timeZone]
   );
 
   const overallStreaks = useMemo(() => {
@@ -65,12 +65,12 @@ export const AnalyticsScreen: React.FC = () => {
     let best = 0;
     let current = 0;
     activeHabits.forEach((h) => {
-      const hStats = calculateHabitStats(h);
+      const hStats = calculateHabitStats(h, undefined, undefined, todayStr, timeZone);
       if (hStats.bestStreak > best) best = hStats.bestStreak;
       if (hStats.currentStreak > current) current = hStats.currentStreak;
     });
     return { best, current };
-  }, [activeHabits]);
+  }, [activeHabits, todayStr, timeZone]);
 
   const monthlyMatrix = useMemo(
     () => getMonthlyConsistencyMatrix(habits, selectedYear, selectedMonth, timeZone),
@@ -78,8 +78,8 @@ export const AnalyticsScreen: React.FC = () => {
   );
 
   const monthlyRates = useMemo(
-    () => calculateMonthlyRates(habits, selectedYear),
-    [habits, selectedYear]
+    () => calculateMonthlyRates(habits, selectedYear, todayStr, timeZone),
+    [habits, selectedYear, todayStr, timeZone]
   );
 
   const isCurrentOrFutureMonth =

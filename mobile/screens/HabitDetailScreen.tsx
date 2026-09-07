@@ -13,6 +13,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useHabits } from '../context/HabitContext';
 import { colors, spacing, typography } from '../theme';
 import { calculateHabitStats, isHabitDueOnDate } from '../utils/habitStats';
+import {
+  getDeviceTimeZone,
+  getTodayYMD,
+  getYMDInTimeZone,
+  formatYMD,
+  parseYMDToLocalDate,
+  getFocusTrackDayIndex,
+} from '../utils/date';
 import { EmptyState } from '../components/EmptyState';
 import { AddEditHabitModal } from '../components/AddEditHabitModal';
 
@@ -26,6 +34,9 @@ export const HabitDetailScreen: React.FC<HabitDetailScreenProps> = ({ habitId })
   const { habits, updateHabit, archiveHabit } = useHabits();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
+  const timeZone = getDeviceTimeZone();
+  const todayStr = getTodayYMD(timeZone);
+
   const habit = useMemo(
     () => habits.find((h) => h.id === habitId) || null,
     [habits, habitId]
@@ -33,9 +44,9 @@ export const HabitDetailScreen: React.FC<HabitDetailScreenProps> = ({ habitId })
 
   const stats = useMemo(() => {
     if (!habit) return null;
-    const now = new Date();
-    return calculateHabitStats(habit, now.getFullYear(), now.getMonth() + 1);
-  }, [habit]);
+    const todayObj = parseYMDToLocalDate(todayStr) || new Date();
+    return calculateHabitStats(habit, todayObj.getFullYear(), todayObj.getMonth() + 1, todayStr, timeZone);
+  }, [habit, todayStr, timeZone]);
 
   if (!habit || !stats) {
     return (
@@ -204,17 +215,15 @@ export const HabitDetailScreen: React.FC<HabitDetailScreenProps> = ({ habitId })
 
         <View style={styles.historyCard}>
           {Array.from({ length: 14 }).map((_, i) => {
-            const d = new Date();
+            const todayDateObj = parseYMDToLocalDate(todayStr) || new Date();
+            const d = new Date(todayDateObj);
             d.setDate(d.getDate() - i);
-            const yStr = d.getFullYear();
-            const mStr = (d.getMonth() + 1).toString().padStart(2, '0');
-            const dayStr = d.getDate().toString().padStart(2, '0');
-            const dateKey = `${yStr}-${mStr}-${dayStr}`;
-            const createdAtYMD = (habit.createdAt || '').slice(0, 10);
+            const dateKey = formatYMD(d.getFullYear(), d.getMonth() + 1, d.getDate());
+            const createdAtYMD = habit.createdAt ? getYMDInTimeZone(habit.createdAt, timeZone) : '';
             const isBeforeCreation = createdAtYMD ? dateKey < createdAtYMD : false;
-            const ftDayIndex = (d.getDay() + 6) % 7; // 0=Mon, 6=Sun
+            const ftDayIndex = getFocusTrackDayIndex(d);
             const isScheduled = (habit.scheduleDays || [0, 1, 2, 3, 4, 5, 6]).includes(ftDayIndex);
-            const isDue = isHabitDueOnDate(habit, dateKey);
+            const isDue = isHabitDueOnDate(habit, dateKey, todayStr, timeZone);
 
             const isDone = !!habit.history[dateKey];
             const dateLabel = d.toLocaleDateString('en-US', {
