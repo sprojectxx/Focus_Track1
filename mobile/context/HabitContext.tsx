@@ -88,14 +88,24 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   useEffect(() => {
+    let isMounted = true;
+
+    // Load initial habit protocol data
     loadHabits();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) loadHabits();
-      else setHabits([]);
+    // Listen for auth state changes (sign in, sign out)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        setHabits([]);
+      } else if (event === 'SIGNED_IN' && session?.user && isMounted) {
+        loadHabits();
+      }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, [loadHabits]);
 
   const activeHabits = useMemo(() => habits.filter((h) => !h.isArchived), [habits]);
