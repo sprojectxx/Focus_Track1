@@ -105,17 +105,21 @@ export async function scheduleHabitReminder(habit: Habit): Promise<void> {
 
 export async function syncHabitReminders(habits: Habit[]) {
   await configureNotifications();
-  // Cancel all existing scheduled notifications in the OS to prevent duplicates and orphaned alarms
-  await Notifications.cancelAllScheduledNotificationsAsync();
 
-  // Clear existing stored IDs from AsyncStorage
+  // Find all stored habit notification keys in AsyncStorage to prevent duplicates and orphaned alarms
   const keys = await AsyncStorage.getAllKeys();
   const notifKeys = keys.filter((k) => k.startsWith(STORAGE_PREFIX));
-  if (notifKeys.length > 0) {
-    await AsyncStorage.multiRemove(notifKeys);
+
+  // Cancel all existing scheduled habit notifications using stored IDs
+  for (const key of notifKeys) {
+    const habitId = key.replace(STORAGE_PREFIX, '');
+    await cancelHabitReminder(habitId);
   }
 
+  // Schedule reminders for current active habits with enabled reminders
   for (const habit of habits) {
-    await scheduleHabitReminder(habit);
+    if (habit.reminderEnabled && !habit.isArchived) {
+      await scheduleHabitReminder(habit);
+    }
   }
 }
