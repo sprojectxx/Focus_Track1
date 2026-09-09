@@ -436,3 +436,45 @@ export function calculateOverallStreaks(
 
   return { currentStreak, bestStreak };
 }
+
+export interface MonthlyRate {
+  month: string;
+  rate: number;
+  dueCount: number;
+  completedCount: number;
+}
+
+export function calculateMonthlyRates(
+  habits: Habit[],
+  selectedYear: number,
+  todayStr: string = getTodayYMD(),
+  timeZone: string = getDeviceTimeZone()
+): MonthlyRate[] {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return months.map((monthName, monthIndex) => {
+    const daysInMonth = getDaysInMonth(selectedYear, monthIndex + 1);
+    let monthDue = 0;
+    let monthCompleted = 0;
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateKey = formatYMD(selectedYear, monthIndex + 1, day);
+      habits.forEach((h) => {
+        if (isHabitDueOnDate(h, dateKey, todayStr, timeZone)) {
+          monthDue++;
+          if (h.history[dateKey]) {
+            monthCompleted++;
+          }
+        }
+      });
+    }
+
+    const rate = monthDue > 0 ? Math.round((monthCompleted / monthDue) * 100) : 0;
+    return {
+      month: monthName,
+      rate,
+      dueCount: monthDue,
+      completedCount: monthCompleted,
+    };
+  });
+}
+

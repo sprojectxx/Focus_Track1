@@ -8,13 +8,14 @@ import { Button } from '../components/Button';
 import { TextInputField } from '../components/TextInputField';
 import { getDeviceTimeZone } from '../utils/date';
 import { fetchUserProfile, updateUserProfile, UserProfileData } from '../lib/profileService';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import appJson from '../app.json';
 
 interface SettingsScreenProps {
   onSignOut?: () => void;
 }
 
-export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onSignOut }) => {
+export const SettingsScreenContent: React.FC<SettingsScreenProps> = ({ onSignOut }) => {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [timeZone, setTimeZone] = useState<string>('Unavailable');
@@ -32,6 +33,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onSignOut }) => 
 
   const [signingOut, setSigningOut] = useState<boolean>(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
+
+  const [avatarError, setAvatarError] = useState<boolean>(false);
 
   useEffect(() => {
     try {
@@ -53,14 +56,20 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onSignOut }) => 
         setUserEmail(user.email || 'Unavailable');
         setUserId(user.id || null);
 
-        // Fetch user profile from Supabase
+        // Fetch user profile from Supabase with 5-second timeout
         try {
-          const profile = await fetchUserProfile(user.id);
+          const timeoutPromise = new Promise<null>((_, reject) =>
+            setTimeout(() => reject(new Error('Profile request timed out after 5 seconds.')), 5000)
+          );
+          const profile = await Promise.race([fetchUserProfile(user.id), timeoutPromise]);
+
           if (profile) {
-            setName(profile.name || '');
-            setTitle(profile.title || 'OPERATOR');
-            setCreed(profile.creed || '');
-            setAvatarUrl(profile.avatarUrl || '');
+            setName(String(profile.name || ''));
+            setTitle(String(profile.title || 'OPERATOR'));
+            setCreed(String(profile.creed || ''));
+            const url = String(profile.avatarUrl || '').trim();
+            setAvatarUrl(url);
+            setAvatarError(false);
           } else {
             setProfileError('Could not load profile credentials from server.');
           }
@@ -93,6 +102,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onSignOut }) => 
         creed: creed.trim(),
         avatarUrl: avatarUrl.trim(),
       });
+      setAvatarError(false);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err: any) {
@@ -101,6 +111,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onSignOut }) => 
     } finally {
       setSavingProfile(false);
     }
+  };
+
+  const isValidAvatarUrl = (url: string): boolean => {
+    if (!url) return false;
+    const trimmed = url.trim();
+    return trimmed.startsWith('http://') || trimmed.startsWith('https://');
   };
 
   const handleSignOut = async () => {
@@ -147,12 +163,20 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onSignOut }) => 
             <ActivityIndicator size="small" color={colors.textPrimary} style={{ marginVertical: spacing.md }} />
           ) : (
             <>
-              {avatarUrl ? (
-                <View style={styles.avatarPreviewRow}>
-                  <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
-                  <Text style={typography.caption}>AVATAR PREVIEW</Text>
-                </View>
-              ) : null}
+              <View style={styles.avatarPreviewRow}>
+                {isValidAvatarUrl(avatarUrl) && !avatarError ? (
+                  <Image
+                    source={{ uri: avatarUrl }}
+                    style={styles.avatarImage}
+                    onError={() => setAvatarError(true)}
+                  />
+                ) : (
+                  <View style={styles.avatarFallback}>
+                    <Ionicons name="person-outline" size={32} color={colors.textSecondary} />
+                  </View>
+                )}
+                <Text style={[typography.caption, { marginTop: 4 }]}>AVATAR PREVIEW</Text>
+              </View>
 
               <TextInputField
                 label="Designation / Name"
@@ -178,7 +202,10 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onSignOut }) => 
               <TextInputField
                 label="Avatar Image URL"
                 value={avatarUrl}
-                onChangeText={setAvatarUrl}
+                onChangeText={(val) => {
+                  setAvatarUrl(val);
+                  setAvatarError(false);
+                }}
                 placeholder="https://..."
               />
 
@@ -396,6 +423,16 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.border,
   },
+  avatarFallback: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 2,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   successContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -415,4 +452,11 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
 });
+
+export const SettingsScreen: React.FC<SettingsScreenProps> = (props) => (
+  <ErrorBoundary fallbackTitle="SETTINGS SCREEN EXCEPTION">
+    <SettingsScreenContent {...props} />
+  </ErrorBoundary>
+);
+
 

@@ -63,7 +63,7 @@ export const HabitsScreen: React.FC<HabitsScreenProps> = ({
   const handleDeleteConfirm = (habit: Habit) => {
     Alert.alert(
       'Delete Protocol Permanently',
-      `Are you sure you want to permanently delete "${habit.name}"? This action cannot be undone.`,
+      `Are you sure you want to permanently delete "${habit.name}"? Deleting a habit permanently deletes its associated completion history. This action cannot be undone.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {

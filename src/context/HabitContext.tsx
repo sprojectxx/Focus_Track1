@@ -240,6 +240,8 @@ const generateUUID = (): string => {
               targetTime: h.target_time || 'Morning',
               focusMinutesPerSession: h.focus_minutes_per_session || 30,
               isArchived: h.is_archived ?? false,
+              archivedAt: h.archived_at ? (h.archived_at.split('T')[0] || getTodayYMD()) : undefined,
+              archivedIntervals: Array.isArray(h.archived_intervals) ? h.archived_intervals : [],
               createdAt: h.created_at ? (h.created_at.split('T')[0] || getTodayYMD()) : getTodayYMD(),
               history,
             };

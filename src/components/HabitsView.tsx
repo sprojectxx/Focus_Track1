@@ -65,7 +65,9 @@ export const HabitsView: React.FC = () => {
 
   const handleDelete = (e: React.MouseEvent, habitId: string) => {
     e.stopPropagation();
-    if (window.confirm('Are you sure you want to delete this habit permanently?')) {
+    const habit = activeHabits.find((h) => h.id === habitId);
+    const habitName = habit ? habit.name : 'this habit';
+    if (window.confirm(`Are you sure you want to permanently delete "${habitName}"? Deleting a habit permanently deletes its associated completion history. This action cannot be undone.`)) {
       deleteHabit(habitId);
     }
   };

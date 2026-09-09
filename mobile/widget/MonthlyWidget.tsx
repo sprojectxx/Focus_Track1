@@ -68,25 +68,40 @@ export function MonthlyWidget({ year, month, matrix, width = 250, height = 180 }
   const isMedium = sizeClass === 'medium';
   const isLarge = sizeClass === 'large';
 
-  // Month label format
+  // Header & Title format based on size class
   const monthName = (isSmall || isTall)
     ? `${MONTH_NAMES_SHORT[month - 1]} ${year}`
     : `${MONTH_NAMES_FULL[month - 1]} ${year}`;
 
   const weekdayLabels = isSmall ? WEEKDAY_NAMES_1 : WEEKDAY_NAMES_3;
 
-  // Geometry specs per size class
-  const padding = isSmall ? 8 : isTall ? 10 : isMedium ? 10 : 12;
-  const cellSize = isSmall ? 10 : isTall ? 12 : isMedium ? 14 : 16;
-  const cellGap = isSmall ? 2 : isTall ? 3 : isMedium ? 3 : 4;
-  const titleFontSize = isSmall ? 10 : isTall ? 11 : isMedium ? 12 : 13;
-  const percentageFontSize = isSmall ? 11 : isTall ? 12 : isMedium ? 13 : 14;
-  const monthFontSize = isSmall ? 8 : isTall ? 9 : isMedium ? 9 : 10;
-  const weekdayFontSize = isSmall ? 7 : isTall ? 8 : isMedium ? 8 : 9;
-  const labelWidth = isSmall ? 14 : 28;
+  // Responsive Layout Geometry Calculation from actual width / height
+  const numWeeks = Math.max(1, Math.ceil(matrix.length / 7));
+  const padding = Math.max(6, Math.min(14, Math.floor(Math.min(width, height) * 0.05)));
+  const headerHeight = isSmall ? 24 : isTall ? 28 : isMedium ? 30 : 34;
+  const legendHeight = isLarge ? 14 : 0;
+
+  const availWidth = Math.max(80, width - 2 * padding);
+  const availHeight = Math.max(80, height - 2 * padding - headerHeight - legendHeight);
+
+  const labelWidth = isSmall ? 14 : 26;
+  const cellGap = Math.max(2, Math.min(6, Math.floor(availWidth / (numWeeks * 6))));
+
+  const spaceForCellsW = availWidth - labelWidth - (numWeeks - 1) * cellGap;
+  const maxCellW = spaceForCellsW / numWeeks;
+  const spaceForCellsH = availHeight - 6 * cellGap;
+  const maxCellH = spaceForCellsH / 7;
+
+  // Square cell size clamped cleanly between 8dp and 32dp
+  const cellSize = Math.max(8, Math.min(32, Math.floor(Math.min(maxCellW, maxCellH))));
+
+  // Typography sizing hints based on calculated cellSize
+  const titleFontSize = Math.max(9, Math.min(14, Math.floor(cellSize * 0.9)));
+  const percentageFontSize = Math.max(10, Math.min(16, Math.floor(cellSize * 1.0)));
+  const monthFontSize = Math.max(7, Math.min(11, Math.floor(cellSize * 0.7)));
+  const weekdayFontSize = Math.max(7, Math.min(10, Math.floor(cellSize * 0.65)));
 
   // Map flat matrix (chronological 7xW) into 7 GitHub-style weekday rows
-  const numWeeks = Math.ceil(matrix.length / 7);
   const weekdayRows: MonthlyConsistencyCell[][] = [];
   for (let d = 0; d < 7; d++) {
     const rowCells: MonthlyConsistencyCell[] = [];
@@ -111,6 +126,7 @@ export function MonthlyWidget({ year, month, matrix, width = 250, height = 180 }
         padding,
         flexDirection: 'column',
         justifyContent: 'space-between',
+        alignItems: 'center',
         borderColor: '#262626',
         borderWidth: 1,
       }}
@@ -122,7 +138,7 @@ export function MonthlyWidget({ year, month, matrix, width = 250, height = 180 }
           justifyContent: 'space-between',
           alignItems: 'center',
           width: 'match_parent',
-          marginBottom: isSmall ? 4 : 6,
+          height: headerHeight,
         }}
       >
         <TextWidget
@@ -158,13 +174,14 @@ export function MonthlyWidget({ year, month, matrix, width = 250, height = 180 }
         </FlexWidget>
       </FlexWidget>
 
-      {/* GitHub-Style Matrix Rows (7 rows for Mon..Sun) */}
+      {/* GitHub-Style Matrix Centered Layout */}
       <FlexWidget
         style={{
           flexDirection: 'column',
           width: 'match_parent',
           flex: 1,
-          justifyContent: 'space-around',
+          justifyContent: 'center',
+          alignItems: 'center',
         }}
       >
         {weekdayRows.map((rowCells, rIdx) => (
@@ -173,8 +190,8 @@ export function MonthlyWidget({ year, month, matrix, width = 250, height = 180 }
             style={{
               flexDirection: 'row',
               alignItems: 'center',
-              width: 'match_parent',
-              marginVertical: 1,
+              justifyContent: 'center',
+              marginVertical: Math.max(1, Math.floor(cellGap / 2)),
             }}
           >
             {/* Weekday Label */}
@@ -213,7 +230,7 @@ export function MonthlyWidget({ year, month, matrix, width = 250, height = 180 }
                     style={{
                       width: cellSize,
                       height: cellSize,
-                      borderRadius: 2,
+                      borderRadius: Math.max(1, Math.floor(cellSize * 0.15)),
                       backgroundColor: cellBgColor,
                       borderWidth: isToday ? 1 : 0,
                       borderColor: isToday ? '#FFFFFF' : '#00000000',
@@ -234,7 +251,7 @@ export function MonthlyWidget({ year, month, matrix, width = 250, height = 180 }
             justifyContent: 'flex-end',
             alignItems: 'center',
             width: 'match_parent',
-            marginTop: 4,
+            height: legendHeight,
             flexGap: 3,
           }}
         >

@@ -100,7 +100,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE OR REPLACE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- ===================================================
--- 7. TIMEZONE-AWARE TODAY-ONLY HABIT LOG ENFORCEMENT
+-- 7. TIMEZONE-AWARE TODAY-ONLY HABIT LOG ENFORCEMENT & CASCADE BYPASS
 -- ===================================================
 CREATE OR REPLACE FUNCTION public.get_user_timezone(p_user_id UUID)
 RETURNS TEXT LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
@@ -118,9 +118,25 @@ $$;
 REVOKE ALL ON FUNCTION public.user_local_today(UUID) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.user_local_today(UUID) TO authenticated;
 
+CREATE OR REPLACE FUNCTION public.mark_habit_deletion_in_progress()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE current_ids TEXT;
+BEGIN
+  current_ids := current_setting('focustrack.deleting_habit_ids', true);
+  IF current_ids IS NULL OR current_ids = '' THEN
+    PERFORM set_config('focustrack.deleting_habit_ids', OLD.id::text, true);
+  ELSE
+    PERFORM set_config('focustrack.deleting_habit_ids', current_ids || ',' || OLD.id::text, true);
+  END IF;
+  RETURN OLD;
+END;
+$$;
+DROP TRIGGER IF EXISTS habit_deletion_cascade_flag ON public.habits;
+CREATE TRIGGER habit_deletion_cascade_flag BEFORE DELETE ON public.habits FOR EACH ROW EXECUTE FUNCTION public.mark_habit_deletion_in_progress();
+
 CREATE OR REPLACE FUNCTION public.enforce_today_only_habit_log()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE local_today DATE; row_user_id UUID;
+DECLARE local_today DATE; row_user_id UUID; deleting_ids TEXT[];
 BEGIN
   row_user_id := CASE WHEN TG_OP = 'DELETE' THEN OLD.user_id ELSE NEW.user_id END;
   IF row_user_id IS NULL THEN RAISE EXCEPTION 'Habit log user_id is required.'; END IF;
@@ -136,7 +152,10 @@ BEGIN
     RETURN NEW;
   ELSIF TG_OP = 'DELETE' THEN
     IF OLD.user_id <> auth.uid() THEN RAISE EXCEPTION 'You can only remove your own habit logs.'; END IF;
-    IF OLD.completed_date <> local_today THEN RAISE EXCEPTION 'Habit logs can only be removed for today''s date (%) in your timezone.', local_today; END IF;
+    deleting_ids := string_to_array(COALESCE(current_setting('focustrack.deleting_habit_ids', true), ''), ',');
+    IF NOT (OLD.habit_id::text = ANY(deleting_ids)) THEN
+      IF OLD.completed_date <> local_today THEN RAISE EXCEPTION 'Habit logs can only be removed for today''s date (%) in your timezone.', local_today; END IF;
+    END IF;
     RETURN OLD;
   END IF;
   RETURN NULL;
@@ -144,3 +163,4 @@ END;
 $$;
 DROP TRIGGER IF EXISTS enforce_habit_logs_today_only ON public.habit_logs;
 CREATE TRIGGER enforce_habit_logs_today_only BEFORE INSERT OR UPDATE OR DELETE ON public.habit_logs FOR EACH ROW EXECUTE FUNCTION public.enforce_today_only_habit_log();
+
