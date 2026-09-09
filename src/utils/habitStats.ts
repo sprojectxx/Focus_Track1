@@ -414,3 +414,25 @@ export function calculateOverallConsistency(
 
   return totalDue > 0 ? Math.round((totalCompleted / totalDue) * 100) : 0;
 }
+
+export function calculateOverallStreaks(
+  habits: Habit[],
+  todayStr: string = getTodayYMD(),
+  timeZone: string = getDeviceTimeZone()
+): { currentStreak: number; bestStreak: number } {
+  const activeHabits = habits.filter((h) => !h.isArchived);
+  if (activeHabits.length === 0) {
+    return { currentStreak: 0, bestStreak: 0 };
+  }
+
+  let bestStreak = 0;
+  let currentStreak = 0;
+
+  activeHabits.forEach((h) => {
+    const hStats = calculateHabitStats(h, undefined, undefined, todayStr, timeZone);
+    if (hStats.bestStreak > bestStreak) bestStreak = hStats.bestStreak;
+    if (hStats.currentStreak > currentStreak) currentStreak = hStats.currentStreak;
+  });
+
+  return { currentStreak, bestStreak };
+}

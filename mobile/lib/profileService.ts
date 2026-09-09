@@ -13,22 +13,30 @@ export interface UserProfileData {
  * Fetch existing profile data from Supabase.
  */
 export async function fetchUserProfile(userId: string): Promise<UserProfileData | null> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('name, title, creed, avatar_url, timezone')
-    .eq('id', userId)
-    .maybeSingle();
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('name, title, creed, avatar_url, timezone')
+      .eq('id', userId)
+      .maybeSingle();
 
-  if (error) throw error;
-  if (!data) return null;
+    if (error) {
+      console.warn('[profileService] fetchUserProfile Supabase error:', error.message);
+      return null;
+    }
+    if (!data) return null;
 
-  return {
-    name: data.name || '',
-    title: data.title || 'OPERATOR',
-    creed: data.creed || 'Ex Duris Gloria — From suffering comes glory',
-    avatarUrl: data.avatar_url || '',
-    timezone: data.timezone || 'UTC',
-  };
+    return {
+      name: data.name || '',
+      title: data.title || 'OPERATOR',
+      creed: data.creed || 'Ex Duris Gloria — From suffering comes glory',
+      avatarUrl: data.avatar_url || '',
+      timezone: data.timezone || 'UTC',
+    };
+  } catch (err: any) {
+    console.warn('[profileService] fetchUserProfile exception:', err);
+    return null;
+  }
 }
 
 /**

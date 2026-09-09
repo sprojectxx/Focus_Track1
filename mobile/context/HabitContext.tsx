@@ -4,7 +4,7 @@ import { Habit } from '../types';
 import { getTodayYMD, isToday, getElapsedDaysInMonth, getDeviceTimeZone } from '../utils/date';
 import { syncUserTimeZone } from '../lib/profileService';
 import { syncHabitReminders, scheduleHabitReminder, cancelHabitReminder } from '../lib/notificationService';
-import { calculateOverallConsistency } from '../utils/habitStats';
+import { calculateOverallConsistency, calculateOverallStreaks } from '../utils/habitStats';
 import {
   fetchUserHabits,
   toggleHabitCompletionInSupabase,
@@ -249,17 +249,18 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
 
     const todayCompletionRate = todayDueCount > 0 ? Math.round((todayCompletedCount / todayDueCount) * 100) : 0;
-    const overallCompletion = calculateOverallConsistency(habits, todayStr);
+    const overallCompletion = calculateOverallConsistency(habits, todayStr, timeZone);
+    const overallStreaks = calculateOverallStreaks(habits, todayStr, timeZone);
 
     return {
       todayDueCount,
       todayCompletedCount,
       todayCompletionRate,
       overallCompletion,
-      currentStreak: 0,
-      bestStreak: 0,
+      currentStreak: overallStreaks.currentStreak,
+      bestStreak: overallStreaks.bestStreak,
     };
-  }, [activeHabits, habits, todayStr, now]);
+  }, [activeHabits, habits, todayStr, timeZone, now]);
 
   return (
     <HabitContext.Provider value={{ habits, activeHabits, archivedHabits, loading, refreshing, error, selectedDateStr, viewingYear, viewingMonth, refreshHabits: () => loadHabits(true), toggleTodayHabit, createHabit, updateHabit, archiveHabit, unarchiveHabit, deleteHabit, stats }}>

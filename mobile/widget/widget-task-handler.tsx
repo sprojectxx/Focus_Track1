@@ -3,15 +3,17 @@ import { registerWidgetTaskHandler, WidgetTaskHandlerProps } from 'react-native-
 import { MonthlyWidget } from './MonthlyWidget';
 import { loadWidgetData } from './widgetDataSync';
 import { getMonthlyConsistencyMatrix } from '../utils/habitStats';
+import { getTodayYMD } from '../utils/date';
 
 export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
   const { widgetInfo, renderWidget } = props;
 
   if (widgetInfo.widgetName === 'MonthlyWidget') {
     const { habits, timeZone } = await loadWidgetData();
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth() + 1;
+    const todayYMD = getTodayYMD(timeZone);
+    const parts = todayYMD.split('-').map(Number);
+    const year = parts[0] || new Date().getFullYear();
+    const month = parts[1] || (new Date().getMonth() + 1);
 
     const matrix = getMonthlyConsistencyMatrix(habits, year, month, timeZone);
     renderWidget(<MonthlyWidget year={year} month={month} matrix={matrix} />);

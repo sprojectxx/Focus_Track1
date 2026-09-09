@@ -25,6 +25,8 @@ export function MonthlyWidget({ year, month, matrix }: MonthlyWidgetProps) {
 
   return (
     <FlexWidget
+      clickAction="OPEN_URI"
+      clickActionData={{ uri: 'com.focustrack.app://analytics' }}
       style={{
         height: 'match_parent',
         width: 'match_parent',

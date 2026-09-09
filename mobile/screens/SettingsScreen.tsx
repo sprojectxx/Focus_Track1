@@ -61,9 +61,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onSignOut }) => 
             setTitle(profile.title || 'OPERATOR');
             setCreed(profile.creed || '');
             setAvatarUrl(profile.avatarUrl || '');
+          } else {
+            setProfileError('Could not load profile credentials from server.');
           }
         } catch (err: any) {
           console.warn('[SettingsScreen] Failed to load user profile:', err);
+          setProfileError(err?.message || 'Could not load profile credentials.');
         } finally {
           setLoadingProfile(false);
         }
@@ -72,6 +75,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onSignOut }) => 
         console.warn('[SettingsScreen] Failed to retrieve user identity:', err);
         setUserEmail('Unavailable');
         setUserId(null);
+        setProfileError('Failed to retrieve user authentication details.');
         setLoadingProfile(false);
       });
   }, []);

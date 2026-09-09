@@ -468,17 +468,13 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.8)',
-    justifyContent: 'flex-end',
+    backgroundColor: colors.background,
   },
   modalCard: {
+    flex: 1,
     backgroundColor: colors.surface,
-    borderTopLeftRadius: spacing.radiusLg,
-    borderTopRightRadius: spacing.radiusLg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    maxHeight: '80%',
     padding: spacing.lg,
+    paddingTop: spacing.xl,
   },
   modalHeader: {
     flexDirection: 'row',

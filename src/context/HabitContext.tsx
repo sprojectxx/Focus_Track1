@@ -6,6 +6,7 @@ import { useAuth } from './AuthContext';
 import { getRandomMottoString } from '../data/motivationalQuotes';
 import { scheduleHabitReminder, cancelHabitReminder } from '../lib/notifications';
 import { getTodayYMD, getDaysInMonth, getElapsedDaysInMonth, isToday } from '../utils/date';
+import { calculateOverallConsistency, calculateOverallStreaks } from '../utils/habitStats';
 
 interface HabitContextType {
   habits: Habit[];
@@ -239,7 +240,7 @@ const generateUUID = (): string => {
               targetTime: h.target_time || 'Morning',
               focusMinutesPerSession: h.focus_minutes_per_session || 30,
               isArchived: h.is_archived ?? false,
-              createdAt: h.created_at ? h.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+              createdAt: h.created_at ? (h.created_at.split('T')[0] || getTodayYMD()) : getTodayYMD(),
               history,
             };
           });
@@ -459,7 +460,7 @@ const generateUUID = (): string => {
       id: habitId,
       history: {},
       isArchived: false,
-      createdAt: new Date().toISOString().split('T')[0],
+      createdAt: getTodayYMD(),
     };
 
     setHabits(prev => [newHabit, ...prev]);
@@ -584,8 +585,6 @@ const generateUUID = (): string => {
       }
     }
 
-    const overallCompletion = totalPossible > 0 ? Math.round((totalCompleted / totalPossible) * 100) : 0;
-
     // Calculate total completed sessions and real streaks across all history
     const datesWithCompletions = new Set<string>();
     let totalSessions = 0;
@@ -599,66 +598,16 @@ const generateUUID = (): string => {
       });
     });
 
-    let currentStreak = 0;
-    let bestStreak = 0;
-
-    if (datesWithCompletions.size > 0) {
-      const sortedDates = Array.from(datesWithCompletions).sort();
-      let maxStreak = 0;
-      let tempStreak = 0;
-      let prevDate: Date | null = null;
-
-      sortedDates.forEach(dStr => {
-        const parts = dStr.split('-').map(Number);
-        const d = new Date(parts[0], parts[1] - 1, parts[2]);
-        if (prevDate) {
-          const diffTime = d.getTime() - prevDate.getTime();
-          const diffDays = Math.round(diffTime / (1000 * 3600 * 24));
-          if (diffDays === 1) {
-            tempStreak++;
-          } else if (diffDays > 1) {
-            tempStreak = 1;
-          }
-        } else {
-          tempStreak = 1;
-        }
-        prevDate = d;
-        if (tempStreak > maxStreak) {
-          maxStreak = tempStreak;
-        }
-      });
-
-      // Calculate current active streak ending today/yesterday
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      let checkDate = new Date(today);
-
-      const formatYMD = (date: Date) => {
-        const y = date.getFullYear();
-        const m = (date.getMonth() + 1).toString().padStart(2, '0');
-        const d = date.getDate().toString().padStart(2, '0');
-        return `${y}-${m}-${d}`;
-      };
-
-      // If today has no completion yet, check if yesterday had completion
-      if (!datesWithCompletions.has(formatYMD(checkDate))) {
-        checkDate.setDate(checkDate.getDate() - 1);
-      }
-
-      while (datesWithCompletions.has(formatYMD(checkDate))) {
-        currentStreak++;
-        checkDate.setDate(checkDate.getDate() - 1);
-      }
-
-      bestStreak = Math.max(maxStreak, currentStreak);
-    }
+    const todayStr = getTodayYMD();
+    const overallCompletion = calculateOverallConsistency(habits, todayStr);
+    const overallStreaks = calculateOverallStreaks(habits, todayStr);
 
     return {
       overallCompletion,
       daysTracked: daysWithAtLeastOne,
       totalDaysInMonth: 30,
-      currentStreak,
-      bestStreak,
+      currentStreak: overallStreaks.currentStreak,
+      bestStreak: overallStreaks.bestStreak,
       totalCompletedSessions: totalSessions,
     };
   }, [activeHabits, habits, viewingYear, viewingMonth]);

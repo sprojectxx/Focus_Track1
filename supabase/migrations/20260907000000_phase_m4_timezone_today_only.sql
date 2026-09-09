@@ -91,10 +91,14 @@ BEGIN
       RAISE EXCEPTION 'You can only remove your own habit logs.';
     END IF;
 
-    IF OLD.completed_date <> local_today THEN
-      RAISE EXCEPTION
-        'Habit logs can only be removed for today''s date (%) in your timezone.',
-        local_today;
+    -- If the parent habit still exists, enforce today-only deletion for individual habit log mutations.
+    -- If the parent habit is being deleted, allow FK cascade cleanup of associated habit logs.
+    IF EXISTS (SELECT 1 FROM public.habits WHERE id = OLD.habit_id) THEN
+      IF OLD.completed_date <> local_today THEN
+        RAISE EXCEPTION
+          'Habit logs can only be removed for today''s date (%) in your timezone.',
+          local_today;
+      END IF;
     END IF;
 
     RETURN OLD;
