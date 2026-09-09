@@ -17,6 +17,7 @@ import { ErrorState } from '../components/ErrorState';
 import {
   getCalendarMonthGrid,
   getTodayYMD,
+  parseYMD,
   isToday,
   isPast,
   isFuture,
@@ -45,15 +46,15 @@ export const CalendarScreen: React.FC = () => {
 
   const timeZone = getDeviceTimeZone();
   const todayStr = getTodayYMD(timeZone);
-  const now = new Date();
+  const parsedToday = parseYMD(todayStr) || { year: new Date().getFullYear(), month: new Date().getMonth() + 1, day: new Date().getDate() };
 
-  const [viewingYear, setViewingYear] = useState<number>(now.getFullYear());
-  const [viewingMonth, setViewingMonth] = useState<number>(now.getMonth() + 1); // 1-12
+  const [viewingYear, setViewingYear] = useState<number>(parsedToday.year);
+  const [viewingMonth, setViewingMonth] = useState<number>(parsedToday.month); // 1-12
   const [selectedDateStr, setSelectedDateStr] = useState<string | null>(null);
   const [isDailyDrawerOpen, setIsDailyDrawerOpen] = useState<boolean>(false);
 
   const monthGrid = getCalendarMonthGrid(viewingYear, viewingMonth);
-  const isCurrentViewingMonth = viewingYear === now.getFullYear() && viewingMonth === (now.getMonth() + 1);
+  const isCurrentViewingMonth = viewingYear === parsedToday.year && viewingMonth === parsedToday.month;
 
   const prevMonth = () => {
     if (viewingMonth === 1) {
@@ -74,8 +75,8 @@ export const CalendarScreen: React.FC = () => {
   };
 
   const goToToday = () => {
-    setViewingYear(now.getFullYear());
-    setViewingMonth(now.getMonth() + 1);
+    setViewingYear(parsedToday.year);
+    setViewingMonth(parsedToday.month);
     setSelectedDateStr(todayStr);
   };
 
@@ -204,11 +205,6 @@ export const CalendarScreen: React.FC = () => {
                   >
                     {dayNumStr}
                   </Text>
-                  {isTodayCell ? (
-                    <View style={styles.todayBadge}>
-                      <Text style={styles.todayBadgeText}>TODAY</Text>
-                    </View>
-                  ) : null}
                 </View>
 
                 {/* Completion Dots */}

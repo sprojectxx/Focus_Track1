@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   DimensionValue,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,6 +24,7 @@ import {
 } from '../utils/date';
 import { EmptyState } from '../components/EmptyState';
 import { AddEditHabitModal } from '../components/AddEditHabitModal';
+import { getIoniconsName } from '../data/monochromeIcons';
 
 interface HabitDetailScreenProps {
   habitId?: string;
@@ -88,11 +90,15 @@ export const HabitDetailScreen: React.FC<HabitDetailScreenProps> = ({ habitId })
         <View style={styles.headerCard}>
           <View style={styles.headerTop}>
             <View style={styles.iconBox}>
-              <Ionicons
-                name={(habit.icon as any) || 'target-outline'}
-                size={28}
-                color={colors.textPrimary}
-              />
+              {habit.visualType === 'image' && habit.customImage ? (
+                <Image source={{ uri: habit.customImage }} style={styles.customImage} />
+              ) : (
+                <Ionicons
+                  name={getIoniconsName(habit.icon) as any}
+                  size={28}
+                  color={colors.textPrimary}
+                />
+              )}
             </View>
             <View style={styles.badgeRow}>
               <View style={styles.badge}>
@@ -315,6 +321,12 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  customImage: {
+    width: 56,
+    height: 56,
+    borderRadius: spacing.radiusLg,
   },
   badgeRow: {
     flexDirection: 'row',

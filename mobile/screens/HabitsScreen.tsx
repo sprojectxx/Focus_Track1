@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   Alert,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,6 +20,7 @@ import { EmptyState } from '../components/EmptyState';
 import { TextInputField } from '../components/TextInputField';
 import { AddEditHabitModal } from '../components/AddEditHabitModal';
 import { PREDEFINED_DOMAINS } from '../data/habitDomains';
+import { getIoniconsName } from '../data/monochromeIcons';
 
 interface HabitsScreenProps {
   onNavigateToDetail?: (habitId: string) => void;
@@ -220,11 +222,15 @@ export const HabitsScreen: React.FC<HabitsScreenProps> = ({
                 activeOpacity={0.8}
               >
                 <View style={styles.iconBox}>
-                  <Ionicons
-                    name={(habit.icon as any) || 'target-outline'}
-                    size={22}
-                    color={colors.textPrimary}
-                  />
+                  {habit.visualType === 'image' && habit.customImage ? (
+                    <Image source={{ uri: habit.customImage }} style={styles.customImage} />
+                  ) : (
+                    <Ionicons
+                      name={getIoniconsName(habit.icon) as any}
+                      size={22}
+                      color={colors.textPrimary}
+                    />
+                  )}
                 </View>
 
                 <View style={styles.habitDetails}>
@@ -400,6 +406,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
+    overflow: 'hidden',
+  },
+  customImage: {
+    width: 44,
+    height: 44,
+    borderRadius: spacing.radiusMd,
   },
   habitDetails: {
     flex: 1,
