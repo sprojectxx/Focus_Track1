@@ -72,8 +72,9 @@ export const HabitsScreen: React.FC<HabitsScreenProps> = ({
           onPress: async () => {
             try {
               await deleteHabit(habit.id);
-            } catch (err) {
+            } catch (err: any) {
               console.error('[HabitsScreen] Delete error:', err);
+              Alert.alert('Delete Failed', err?.message || 'Could not delete habit protocol from database.');
             }
           },
         },
@@ -92,8 +93,9 @@ export const HabitsScreen: React.FC<HabitsScreenProps> = ({
           onPress: async () => {
             try {
               await archiveHabit(habit.id);
-            } catch (err) {
+            } catch (err: any) {
               console.error('[HabitsScreen] Archive error:', err);
+              Alert.alert('Archive Failed', err?.message || 'Could not archive habit protocol.');
             }
           },
         },

@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import { colors, spacing, typography } from '../theme';
 import { Button } from '../components/Button';
+import { TextInputField } from '../components/TextInputField';
 import { getDeviceTimeZone } from '../utils/date';
+import { fetchUserProfile, updateUserProfile, UserProfileData } from '../lib/profileService';
 import appJson from '../app.json';
 
 interface SettingsScreenProps {
@@ -16,6 +18,18 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onSignOut }) => 
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [timeZone, setTimeZone] = useState<string>('Unavailable');
+
+  // Profile editable state
+  const [name, setName] = useState<string>('');
+  const [title, setTitle] = useState<string>('OPERATOR');
+  const [creed, setCreed] = useState<string>('');
+  const [avatarUrl, setAvatarUrl] = useState<string>('');
+  
+  const [loadingProfile, setLoadingProfile] = useState<boolean>(true);
+  const [savingProfile, setSavingProfile] = useState<boolean>(false);
+  const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+
   const [signingOut, setSigningOut] = useState<boolean>(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
 
@@ -29,21 +43,61 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onSignOut }) => 
 
     supabase.auth
       .getUser()
-      .then(({ data: { user }, error }) => {
+      .then(async ({ data: { user }, error }) => {
         if (error || !user) {
           setUserEmail('Unavailable');
           setUserId(null);
+          setLoadingProfile(false);
           return;
         }
         setUserEmail(user.email || 'Unavailable');
         setUserId(user.id || null);
+
+        // Fetch user profile from Supabase
+        try {
+          const profile = await fetchUserProfile(user.id);
+          if (profile) {
+            setName(profile.name || '');
+            setTitle(profile.title || 'OPERATOR');
+            setCreed(profile.creed || '');
+            setAvatarUrl(profile.avatarUrl || '');
+          }
+        } catch (err: any) {
+          console.warn('[SettingsScreen] Failed to load user profile:', err);
+        } finally {
+          setLoadingProfile(false);
+        }
       })
       .catch((err) => {
         console.warn('[SettingsScreen] Failed to retrieve user identity:', err);
         setUserEmail('Unavailable');
         setUserId(null);
+        setLoadingProfile(false);
       });
   }, []);
+
+  const handleSaveProfile = async () => {
+    if (!userId) return;
+    setSavingProfile(true);
+    setProfileError(null);
+    setSaveSuccess(false);
+
+    try {
+      await updateUserProfile(userId, {
+        name: name.trim(),
+        title: title.trim(),
+        creed: creed.trim(),
+        avatarUrl: avatarUrl.trim(),
+      });
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err: any) {
+      console.error('[SettingsScreen] Save profile error:', err);
+      setProfileError(err?.message || 'Failed to save profile credentials to database.');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
 
   const handleSignOut = async () => {
     setSigningOut(true);
@@ -70,11 +124,83 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onSignOut }) => 
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
         {/* Header */}
         <View style={styles.header}>
           <Text style={typography.h1}>SETTINGS</Text>
           <Text style={typography.caption}>SYSTEM PREFERENCES & ACCOUNT</Text>
+        </View>
+
+        {/* Profile Credentials Section */}
+        <View style={styles.section}>
+          <Text style={[typography.h3, styles.sectionTitle]}>IDENTITY CREDENTIALS</Text>
+          {loadingProfile ? (
+            <ActivityIndicator size="small" color={colors.textPrimary} style={{ marginVertical: spacing.md }} />
+          ) : (
+            <>
+              {avatarUrl ? (
+                <View style={styles.avatarPreviewRow}>
+                  <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+                  <Text style={typography.caption}>AVATAR PREVIEW</Text>
+                </View>
+              ) : null}
+
+              <TextInputField
+                label="Designation / Name"
+                value={name}
+                onChangeText={setName}
+                placeholder="e.g. Operator Name"
+              />
+
+              <TextInputField
+                label="Title / Rank"
+                value={title}
+                onChangeText={setTitle}
+                placeholder="e.g. OPERATOR"
+              />
+
+              <TextInputField
+                label="Operational Creed / Philosophy"
+                value={creed}
+                onChangeText={setCreed}
+                placeholder="e.g. Ex Duris Gloria — From suffering comes glory"
+              />
+
+              <TextInputField
+                label="Avatar Image URL"
+                value={avatarUrl}
+                onChangeText={setAvatarUrl}
+                placeholder="https://..."
+              />
+
+              {profileError ? (
+                <View style={styles.errorContainer}>
+                  <Ionicons name="alert-circle-outline" size={18} color={colors.dangerText} />
+                  <Text style={[typography.caption, styles.errorText]}>{profileError}</Text>
+                </View>
+              ) : null}
+
+              {saveSuccess ? (
+                <View style={styles.successContainer}>
+                  <Ionicons name="checkmark-circle-outline" size={18} color={colors.textPrimary} />
+                  <Text style={styles.successText}>CHANGES SYNCED</Text>
+                </View>
+              ) : null}
+
+              <Button
+                title={savingProfile ? 'SAVING CREDENTIALS...' : 'SAVE CREDENTIALS'}
+                onPress={handleSaveProfile}
+                variant="primary"
+                disabled={savingProfile}
+                style={{ marginTop: spacing.sm }}
+              />
+            </>
+          )}
         </View>
 
         {/* Active IANA Timezone Section */}
@@ -254,6 +380,35 @@ const styles = StyleSheet.create({
   },
   loader: {
     marginTop: spacing.sm,
+  },
+  avatarPreviewRow: {
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  avatarImage: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 2,
+    borderColor: colors.border,
+  },
+  successContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surfaceSecondary,
+    borderColor: colors.textPrimary,
+    borderWidth: 1,
+    padding: spacing.sm,
+    borderRadius: spacing.radiusMd,
+    marginBottom: spacing.md,
+    gap: spacing.xs,
+    justifyContent: 'center',
+  },
+  successText: {
+    color: colors.textPrimary,
+    fontWeight: '700',
+    fontSize: 12,
+    letterSpacing: 1,
   },
 });
 

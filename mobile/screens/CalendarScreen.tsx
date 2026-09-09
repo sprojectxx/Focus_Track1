@@ -395,16 +395,17 @@ const styles = StyleSheet.create({
   daysGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 4,
+    justifyContent: 'space-between',
+    rowGap: 6,
   },
   dayCell: {
     width: '13.5%',
-    aspectRatio: 1,
+    minHeight: 54,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: spacing.radiusSm,
-    padding: 4,
+    padding: 6,
     justifyContent: 'space-between',
   },
   dayCellDisabled: {
@@ -427,7 +428,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   dayText: {
-    fontSize: 11,
+    fontSize: 14,
     fontWeight: '700',
     color: colors.textPrimary,
   },
@@ -439,28 +440,31 @@ const styles = StyleSheet.create({
   },
   todayBadge: {
     backgroundColor: colors.textPrimary,
-    paddingHorizontal: 2,
+    paddingHorizontal: 3,
+    paddingVertical: 1,
     borderRadius: 2,
   },
   todayBadgeText: {
-    fontSize: 7,
+    fontSize: 8,
     fontWeight: '900',
     color: colors.background,
   },
   dotsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    gap: 3,
+    marginTop: 4,
   },
   completedDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: colors.textPrimary,
   },
   moreDotsText: {
-    fontSize: 7,
+    fontSize: 8,
     color: colors.textMuted,
+    fontWeight: '700',
   },
   modalOverlay: {
     flex: 1,

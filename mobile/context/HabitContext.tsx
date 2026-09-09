@@ -13,6 +13,7 @@ import {
   setHabitArchivedInSupabase,
   deleteHabitFromSupabase,
 } from '../lib/habitService';
+import { syncWidgetData } from '../widget/widgetDataSync';
 
 interface HabitContextType {
   habits: Habit[];
@@ -110,6 +111,14 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const activeHabits = useMemo(() => habits.filter((h) => !h.isArchived), [habits]);
   const archivedHabits = useMemo(() => habits.filter((h) => h.isArchived), [habits]);
+
+  useEffect(() => {
+    if (habits.length > 0) {
+      syncWidgetData(habits, timeZone).catch((err) => {
+        console.warn('[HabitContext] Widget sync failed:', err);
+      });
+    }
+  }, [habits, timeZone]);
 
   const toggleTodayHabit = async (habitId: string) => {
     const target = habits.find((h) => h.id === habitId);

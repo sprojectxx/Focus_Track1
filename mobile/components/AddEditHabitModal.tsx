@@ -68,6 +68,7 @@ export const AddEditHabitModal: React.FC<AddEditHabitModalProps> = ({
 
   const [nameError, setNameError] = useState<string | null>(null);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -104,6 +105,7 @@ export const AddEditHabitModal: React.FC<AddEditHabitModalProps> = ({
     }
     setNameError(null);
     setScheduleError(null);
+    setSubmitError(null);
   }, [editingHabit, visible]);
 
   const toggleDay = (dayIndex: number) => {
@@ -126,6 +128,7 @@ export const AddEditHabitModal: React.FC<AddEditHabitModalProps> = ({
     let isValid = true;
     setNameError(null);
     setScheduleError(null);
+    setSubmitError(null);
 
     if (!name.trim()) {
       setNameError('Habit name is required.');
@@ -159,8 +162,9 @@ export const AddEditHabitModal: React.FC<AddEditHabitModalProps> = ({
         focusMinutesPerSession: focusMinutes,
       });
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error('[AddEditHabitModal] Save error:', err);
+      setSubmitError(err?.message || 'Failed to save habit protocol. Please check your network connection.');
     } finally {
       setLoading(false);
     }
@@ -358,6 +362,14 @@ export const AddEditHabitModal: React.FC<AddEditHabitModalProps> = ({
               style={styles.descriptionInput}
             />
 
+            {/* Error feedback */}
+            {submitError ? (
+              <View style={styles.errorBanner}>
+                <Ionicons name="alert-circle-outline" size={18} color={colors.dangerText} />
+                <Text style={styles.errorBannerText}>{submitError}</Text>
+              </View>
+            ) : null}
+
             {/* Action Buttons */}
             <Button
               title={loading ? 'SAVING PROTOCOL...' : 'SAVE PROTOCOL'}
@@ -524,5 +536,21 @@ const styles = StyleSheet.create({
   },
   loader: {
     marginTop: spacing.md,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.danger,
+    borderColor: colors.dangerText,
+    borderWidth: 1,
+    padding: spacing.md,
+    borderRadius: spacing.radiusMd,
+    marginTop: spacing.md,
+    gap: spacing.sm,
+  },
+  errorBannerText: {
+    color: colors.textPrimary,
+    fontSize: 12,
+    flex: 1,
   },
 });
