@@ -31,7 +31,14 @@ export async function syncWidgetData(habits: Habit[], timeZone: string = getDevi
 
     await requestWidgetUpdate({
       widgetName: 'MonthlyWidget',
-      renderWidget: () => React.createElement(MonthlyWidget, { year, month, matrix }),
+      renderWidget: (widgetInfo) =>
+        React.createElement(MonthlyWidget, {
+          year,
+          month,
+          matrix,
+          width: widgetInfo?.width,
+          height: widgetInfo?.height,
+        }),
     });
   } catch (err) {
     console.warn('Widget sync error:', err);

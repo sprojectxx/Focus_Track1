@@ -30,12 +30,15 @@
           "widgets": [
             {
               "name": "MonthlyWidget",
-              "label": "FocusTrack Monthly Matrix",
-              "description": "Displays current month habit consistency matrix",
-              "minWidth": "250dp",
-              "minHeight": "160dp",
+              "label": "FocusTrack Contribution Matrix",
+              "description": "Monochrome GitHub-style current month habit consistency graph",
+              "minWidth": "120dp",
+              "minHeight": "120dp",
               "targetCellWidth": 4,
               "targetCellHeight": 3,
+              "maxResizeWidth": "360dp",
+              "maxResizeHeight": "360dp",
+              "resizeMode": "horizontal|vertical",
               "updatePeriodMillis": 3600000
             }
           ]

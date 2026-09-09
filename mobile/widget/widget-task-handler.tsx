@@ -16,7 +16,15 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
     const month = parts[1] || (new Date().getMonth() + 1);
 
     const matrix = getMonthlyConsistencyMatrix(habits, year, month, timeZone);
-    renderWidget(<MonthlyWidget year={year} month={month} matrix={matrix} />);
+    renderWidget(
+      <MonthlyWidget
+        year={year}
+        month={month}
+        matrix={matrix}
+        width={widgetInfo.width}
+        height={widgetInfo.height}
+      />
+    );
   }
 }
 
