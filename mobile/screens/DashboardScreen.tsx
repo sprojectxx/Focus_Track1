@@ -16,6 +16,7 @@ import { ErrorState } from '../components/ErrorState';
 import { EmptyState } from '../components/EmptyState';
 import { getTimeBasedGreeting, getRandomQuote } from '../data/motivationalQuotes';
 import { getTodayYMD, getDaysInMonth, getFocusTrackDayIndex } from '../utils/date';
+import { getIoniconsName } from '../data/monochromeIcons';
 import { AddEditHabitModal } from '../components/AddEditHabitModal';
 
 export const DashboardScreen: React.FC = () => {
@@ -114,7 +115,7 @@ export const DashboardScreen: React.FC = () => {
                 <View style={styles.taskInfo}>
                   <View style={styles.iconBox}>
                     <Ionicons
-                      name={(habit.icon as any) || 'target-outline'}
+                      name={getIoniconsName(habit.icon) as any}
                       size={20}
                       color={colors.textPrimary}
                     />

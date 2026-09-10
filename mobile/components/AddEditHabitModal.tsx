@@ -951,7 +951,6 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 6,
     marginBottom: spacing.md,
-    maxHeight: 180,
   },
   iconChip: {
     width: 44,

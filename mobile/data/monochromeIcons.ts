@@ -182,7 +182,7 @@ export const ICON_NAME_MAP: Record<string, string> = {
   tune: 'options-outline',
   bolt: 'flash-outline',
   lock: 'lock-closed-outline',
-  target: 'target-outline',
+  target: 'locate-outline',
   grade: 'star-outline',
   verified: 'shield-checkmark-outline',
   all_inclusive: 'infinite-outline',
@@ -191,8 +191,8 @@ export const ICON_NAME_MAP: Record<string, string> = {
 };
 
 export function getIoniconsName(iconId?: string): string {
-  if (!iconId) return 'target-outline';
+  if (!iconId) return 'locate-outline';
   if (ICON_NAME_MAP[iconId]) return ICON_NAME_MAP[iconId];
   if (iconId.endsWith('-outline')) return iconId;
-  return 'target-outline';
+  return 'locate-outline';
 }

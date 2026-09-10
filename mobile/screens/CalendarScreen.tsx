@@ -25,6 +25,7 @@ import {
   getDeviceTimeZone,
 } from '../utils/date';
 import { isHabitDueOnDate } from '../utils/habitStats';
+import { getIoniconsName } from '../data/monochromeIcons';
 
 const MONTH_NAMES = [
   'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
@@ -279,7 +280,7 @@ export const CalendarScreen: React.FC = () => {
                     <View key={habit.id} style={styles.drawerHabitRow}>
                       <View style={styles.drawerHabitInfo}>
                         <Ionicons
-                          name={(habit.icon as any) || 'target-outline'}
+                          name={getIoniconsName(habit.icon) as any}
                           size={20}
                           color={colors.textPrimary}
                           style={styles.drawerIcon}

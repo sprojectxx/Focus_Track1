@@ -16,6 +16,7 @@ import { colors, spacing, typography } from '../theme';
 import { LoadingState } from '../components/LoadingState';
 import { ErrorState } from '../components/ErrorState';
 import { EmptyState } from '../components/EmptyState';
+import { getIoniconsName } from '../data/monochromeIcons';
 
 export const ArchiveScreen: React.FC = () => {
   const {
@@ -95,7 +96,7 @@ export const ArchiveScreen: React.FC = () => {
               <View style={styles.cardBody}>
                 <View style={styles.iconBox}>
                   <Ionicons
-                    name={(habit.icon as any) || 'archive-outline'}
+                    name={getIoniconsName(habit.icon) as any}
                     size={22}
                     color={colors.textMuted}
                   />
