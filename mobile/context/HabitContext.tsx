@@ -224,13 +224,25 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const deleteHabit = async (habitId: string) => {
+    const currentHabit = habits.find((h) => h.id === habitId);
+
+    // Authoritatively cancel all native reminders for this habit BEFORE database deletion
+    await cancelHabitReminder(habitId);
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated.');
       await deleteHabitFromSupabase(user.id, habitId);
-      await cancelHabitReminder(habitId);
       setHabits((prev) => prev.filter((h) => h.id !== habitId));
     } catch (err: any) {
+      // If database deletion fails, restore the reminder for the existing active habit
+      if (currentHabit && currentHabit.reminderEnabled && !currentHabit.isArchived) {
+        try {
+          await scheduleHabitReminder(currentHabit);
+        } catch (rescheduleError) {
+          console.warn('[HabitContext] Failed to restore reminder after delete failure:', rescheduleError);
+        }
+      }
       console.error('[HabitContext] Delete error:', err);
       throw err;
     }

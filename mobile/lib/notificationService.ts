@@ -57,16 +57,52 @@ export async function getNotificationPermissionState() {
   return Notifications.getPermissionsAsync();
 }
 
-export async function cancelHabitReminder(habitId: string) {
-  const raw = await AsyncStorage.getItem(notificationStorageKey(habitId));
-  if (!raw) return;
+export async function cancelHabitReminder(habitId: string): Promise<void> {
+  if (!habitId) return;
 
-  const ids: string[] = JSON.parse(raw);
-  await Promise.all(ids.map((id) => Notifications.cancelScheduledNotificationAsync(id)));
-  await AsyncStorage.removeItem(notificationStorageKey(habitId));
+  // 1. Cancel IDs stored in AsyncStorage
+  try {
+    const raw = await AsyncStorage.getItem(notificationStorageKey(habitId));
+    if (raw) {
+      const ids: string[] = JSON.parse(raw);
+      if (Array.isArray(ids) && ids.length > 0) {
+        await Promise.allSettled(
+          ids.map((id) => Notifications.cancelScheduledNotificationAsync(id))
+        );
+      }
+    }
+  } catch (err) {
+    console.warn(`[notificationService] Error reading/cancelling stored IDs for habit ${habitId}:`, err);
+  }
+
+  // 2. Authoritative Native Check: Inspect all scheduled native notifications as safety net
+  try {
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    const matching = scheduled.filter(
+      (n) =>
+        n.content.data?.type === 'habit-reminder' &&
+        n.content.data?.habitId === habitId
+    );
+
+    if (matching.length > 0) {
+      await Promise.allSettled(
+        matching.map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier))
+      );
+    }
+  } catch (err) {
+    console.warn(`[notificationService] Error checking native scheduled notifications for habit ${habitId}:`, err);
+  }
+
+  // 3. Remove AsyncStorage storage key
+  try {
+    await AsyncStorage.removeItem(notificationStorageKey(habitId));
+  } catch (err) {
+    console.warn(`[notificationService] Error removing storage key for habit ${habitId}:`, err);
+  }
 }
 
 export async function scheduleHabitReminder(habit: Habit): Promise<void> {
+  // Always authoritatively cancel existing native reminders for habit.id first
   await cancelHabitReminder(habit.id);
 
   // M5 targets native Android first. iOS remote/local scheduling can be added without
@@ -106,20 +142,50 @@ export async function scheduleHabitReminder(habit: Habit): Promise<void> {
 export async function syncHabitReminders(habits: Habit[]) {
   await configureNotifications();
 
-  // Find all stored habit notification keys in AsyncStorage to prevent duplicates and orphaned alarms
-  const keys = await AsyncStorage.getAllKeys();
-  const notifKeys = keys.filter((k) => k.startsWith(STORAGE_PREFIX));
+  // STEP C: Build a set of valid active habit IDs (reminder enabled & not archived)
+  const activeHabits = habits.filter((h) => h.reminderEnabled && !h.isArchived);
+  const validHabitIds = new Set(activeHabits.map((h) => h.id));
 
-  // Cancel all existing scheduled habit notifications using stored IDs
-  for (const key of notifKeys) {
-    const habitId = key.replace(STORAGE_PREFIX, '');
-    await cancelHabitReminder(habitId);
+  // STEP B & D: Inspect every native scheduled notification and cancel orphaned/inactive ones
+  try {
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    const orphanedOrInvalid = scheduled.filter((n) => {
+      if (n.content.data?.type !== 'habit-reminder') return false;
+      const habitId = n.content.data?.habitId as string | undefined;
+      return !habitId || !validHabitIds.has(habitId);
+    });
+
+    if (orphanedOrInvalid.length > 0) {
+      await Promise.allSettled(
+        orphanedOrInvalid.map(async (n) => {
+          const habitId = n.content.data?.habitId as string | undefined;
+          await Notifications.cancelScheduledNotificationAsync(n.identifier);
+          if (habitId) {
+            await AsyncStorage.removeItem(notificationStorageKey(habitId)).catch(() => {});
+          }
+        })
+      );
+    }
+  } catch (err) {
+    console.warn('[notificationService] Error during native notification cleanup in syncHabitReminders:', err);
   }
 
-  // Schedule reminders for current active habits with enabled reminders
-  for (const habit of habits) {
-    if (habit.reminderEnabled && !habit.isArchived) {
-      await scheduleHabitReminder(habit);
+  // Also clean up any lingering AsyncStorage keys whose habitId is not in validHabitIds
+  try {
+    const keys = await AsyncStorage.getAllKeys();
+    const notifKeys = keys.filter((k) => k.startsWith(STORAGE_PREFIX));
+    for (const key of notifKeys) {
+      const habitId = key.replace(STORAGE_PREFIX, '');
+      if (!validHabitIds.has(habitId)) {
+        await cancelHabitReminder(habitId);
+      }
     }
+  } catch (err) {
+    console.warn('[notificationService] Error cleaning AsyncStorage keys in syncHabitReminders:', err);
+  }
+
+  // STEP E: Reschedule active valid habits cleanly
+  for (const habit of activeHabits) {
+    await scheduleHabitReminder(habit);
   }
 }
