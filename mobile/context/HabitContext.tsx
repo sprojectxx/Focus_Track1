@@ -98,7 +98,11 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
         setHabits([]);
+        setError(null);
+        syncHabitReminders([]).catch(() => {});
       } else if (event === 'SIGNED_IN' && session?.user && isMounted) {
+        setHabits([]);
+        setError(null);
         loadHabits();
       }
     });

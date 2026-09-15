@@ -1,11 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { Habit, NavigationTab, UserProfile } from '../types';
-import { INITIAL_HABITS, INITIAL_USER_PROFILE } from '../data/initialData';
+import { INITIAL_USER_PROFILE } from '../data/initialData';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import { useAuth } from './AuthContext';
 import { getRandomMottoString } from '../data/motivationalQuotes';
 import { scheduleHabitReminder, cancelHabitReminder } from '../lib/notifications';
-import { getTodayYMD, getDaysInMonth, getElapsedDaysInMonth, isToday } from '../utils/date';
+import { getTodayYMD, getElapsedDaysInMonth, isToday } from '../utils/date';
 import { calculateOverallConsistency, calculateOverallStreaks } from '../utils/habitStats';
 
 interface HabitContextType {
@@ -65,8 +65,18 @@ interface HabitContextType {
 
 const HabitContext = createContext<HabitContextType | undefined>(undefined);
 
-const HABITS_STORAGE_KEY = 'focustrack_habits_v1';
-const PROFILE_STORAGE_KEY = 'focustrack_profile_v1';
+const HABITS_STORAGE_PREFIX = 'focustrack_habits_v1_';
+const PROFILE_STORAGE_PREFIX = 'focustrack_profile_v1_';
+
+function getHabitsStorageKey(userId?: string | null): string | null {
+  if (!userId) return null;
+  return `${HABITS_STORAGE_PREFIX}${userId}`;
+}
+
+function getProfileStorageKey(userId?: string | null): string | null {
+  if (!userId) return null;
+  return `${PROFILE_STORAGE_PREFIX}${userId}`;
+}
 
 export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
@@ -84,7 +94,6 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [currentTab, setCurrentTab] = useState<NavigationTab>('dashboard');
   const [selectedHabitId, setSelectedHabitId] = useState<string | null>(null);
 
-
   // Modals
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
@@ -92,39 +101,67 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
-  // Habits State (Filter legacy mock habits)
-  const [habits, setHabits] = useState<Habit[]>(() => {
-    try {
-      const saved = localStorage.getItem(HABITS_STORAGE_KEY);
-      if (saved) {
-        const parsed: Habit[] = JSON.parse(saved);
-        const filtered = parsed.filter(h => !h.id.startsWith('habit-'));
-        return filtered;
-      }
-    } catch {
-      // fallback
-    }
-    return INITIAL_HABITS;
-  });
-
-
   // User Profile
-  const [userProfile, setUserProfile] = useState<UserProfile>(() => {
-    try {
-      const saved = localStorage.getItem(PROFILE_STORAGE_KEY);
-      if (saved) {
-        return JSON.parse(saved);
-      }
-    } catch {
-      // fallback
-    }
-    return INITIAL_USER_PROFILE;
-  });
+  const [userProfile, setUserProfile] = useState<UserProfile>(INITIAL_USER_PROFILE);
 
-  // Sync Profile with Supabase when authenticated
+  // Habits State
+  const [habits, setHabits] = useState<Habit[]>([]);
+
+  // Calculate canonical derived Discipline Score dynamically
+  const derivedDisciplineScore = useMemo(() => {
+    return calculateOverallConsistency(habits, todayStr);
+  }, [habits, todayStr]);
+
+  const effectiveUserProfile = useMemo(() => ({
+    ...userProfile,
+    disciplineScore: derivedDisciplineScore,
+  }), [userProfile, derivedDisciplineScore]);
+
+  // Handle Auth Account Switch & Supabase Sync
   useEffect(() => {
-    if (!isSupabaseConfigured || !user?.id) return;
+    if (!user?.id) {
+      // User is signed out: clear all account-specific in-memory state immediately
+      setHabits([]);
+      setUserProfile(INITIAL_USER_PROFILE);
+      setSelectedHabitId(null);
+      setEditingHabit(null);
+      setIsDailyPanelOpen(false);
+      setIsNotificationOpen(false);
+      setIsProfileModalOpen(false);
+      return;
+    }
 
+    // User is signed in: clear previous user's habits immediately before fetching
+    setHabits([]);
+    setSelectedHabitId(null);
+    setEditingHabit(null);
+
+    // Load user-scoped local profile if available
+    const profileKey = getProfileStorageKey(user.id);
+    if (profileKey) {
+      const cachedProf = localStorage.getItem(profileKey);
+      if (cachedProf) {
+        try {
+          setUserProfile(JSON.parse(cachedProf));
+        } catch {}
+      }
+    }
+
+    // Load user-scoped cached habits for optimistic rendering
+    const habitsKey = getHabitsStorageKey(user.id);
+    if (habitsKey) {
+      const cachedStr = localStorage.getItem(habitsKey);
+      if (cachedStr) {
+        try {
+          const parsed: Habit[] = JSON.parse(cachedStr);
+          setHabits(parsed.filter(h => !h.id.startsWith('habit-')));
+        } catch {}
+      }
+    }
+
+    if (!isSupabaseConfigured) return;
+
+    // Fetch Profile from Supabase
     const fetchSupabaseProfile = async () => {
       try {
         const { data } = await supabase
@@ -138,45 +175,24 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             name: data.name || user.user_metadata?.full_name || 'Operator',
             title: data.title || 'TACTICAL OPERATOR',
             avatarUrl: data.avatar_url || user.user_metadata?.avatar_url || INITIAL_USER_PROFILE.avatarUrl,
-            disciplineScore: data.discipline_score ?? 0,
+            disciplineScore: 0,
             creed: data.creed || getRandomMottoString(),
           });
         } else {
-          // New profile — prepopulate initial state with Google user metadata for onboarding screen
-          const randomCreed = getRandomMottoString();
           setUserProfile({
             name: user.user_metadata?.full_name || 'Operator',
             title: 'TACTICAL OPERATOR',
             avatarUrl: user.user_metadata?.avatar_url || INITIAL_USER_PROFILE.avatarUrl,
             disciplineScore: 0,
-            creed: randomCreed,
+            creed: getRandomMottoString(),
           });
         }
       } catch (err) {
-        console.error('Failed to sync profile from Supabase:', err);
+        console.error('[HabitContext] Profile fetch error:', err);
       }
     };
 
-    fetchSupabaseProfile();
-  }, [user?.id]);
-
-const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
-
-const generateUUID = (): string => {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-    return crypto.randomUUID();
-  }
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-};
-
-  // Sync Habits & Habit Logs with Supabase when authenticated
-  useEffect(() => {
-    if (!isSupabaseConfigured || !user?.id) return;
-
+    // Fetch Habits & Logs from Supabase
     const fetchSupabaseHabits = async () => {
       try {
         const { data: habitsData, error: habitsErr } = await supabase
@@ -187,95 +203,111 @@ const generateUUID = (): string => {
 
         if (habitsErr) {
           console.error('[HabitContext] Fetch habits error:', habitsErr);
+          // On fetch error: do not leave previous account data or fall back to un-scoped cache
+          setHabits([]);
           return;
         }
 
-        if (habitsData && habitsData.length > 0) {
-          const { data: logsData } = await supabase
-            .from('habit_logs')
-            .select('*')
-            .eq('user_id', user.id);
+        if (!habitsData || habitsData.length === 0) {
+          // ALWAYS set empty array when authenticated account has 0 habits!
+          setHabits([]);
+          if (habitsKey) {
+            localStorage.setItem(habitsKey, JSON.stringify([]));
+          }
+          return;
+        }
 
-          // Get local history map from localStorage so unsynced checks are preserved
-          const savedLocal = localStorage.getItem(HABITS_STORAGE_KEY);
-          let localHistoryMap: Record<string, Record<string, boolean>> = {};
+        const { data: logsData } = await supabase
+          .from('habit_logs')
+          .select('*')
+          .eq('user_id', user.id);
+
+        // Read local history map ONLY from current user's storage key
+        let localHistoryMap: Record<string, Record<string, boolean>> = {};
+        if (habitsKey) {
+          const savedLocal = localStorage.getItem(habitsKey);
           if (savedLocal) {
             try {
               const parsedLocal: Habit[] = JSON.parse(savedLocal);
               parsedLocal.forEach(h => {
                 localHistoryMap[h.id] = h.history || {};
               });
-            } catch {
-              // ignore
-            }
+            } catch {}
+          }
+        }
+
+        const mapped: Habit[] = habitsData.map(h => {
+          const history: Record<string, boolean> = {
+            ...(localHistoryMap[h.id] || {}),
+          };
+
+          if (logsData) {
+            logsData
+              .filter(l => l.habit_id === h.id)
+              .forEach(l => {
+                history[l.completed_date] = l.completed;
+              });
           }
 
-          const mapped: Habit[] = habitsData.map(h => {
-            const history: Record<string, boolean> = {
-              ...(localHistoryMap[h.id] || {}),
-            };
+          return {
+            id: h.id,
+            name: h.name,
+            category: h.category || 'General',
+            categoryLabel: h.category_label || h.category,
+            description: h.description || '',
+            priority: h.priority || 'medium',
+            icon: h.icon || 'target',
+            customImage: h.custom_image || undefined,
+            visualType: (h.visual_type as 'icon' | 'image' | 'symbol') || 'icon',
+            scheduleDays: h.schedule_days || [0, 1, 2, 3, 4, 5, 6],
+            scheduleType: (h.schedule_type as 'daily' | 'weekdays' | 'weekends' | 'custom') || 'daily',
+            reminderEnabled: h.reminder_enabled ?? false,
+            reminderTime: h.reminder_time || '08:00',
+            targetTime: h.target_time || 'Morning',
+            focusMinutesPerSession: h.focus_minutes_per_session || 30,
+            isArchived: h.is_archived ?? false,
+            archivedAt: h.archived_at ? (h.archived_at.split('T')[0] || getTodayYMD()) : undefined,
+            archivedIntervals: Array.isArray(h.archived_intervals) ? h.archived_intervals : [],
+            createdAt: h.created_at ? (h.created_at.split('T')[0] || getTodayYMD()) : getTodayYMD(),
+            history,
+          };
+        });
 
-            if (logsData) {
-              logsData
-                .filter(l => l.habit_id === h.id)
-                .forEach(l => {
-                  history[l.completed_date] = l.completed;
-                });
-            }
-
-            return {
-              id: h.id,
-              name: h.name,
-              category: h.category || 'General',
-              categoryLabel: h.category_label || h.category,
-              description: h.description || '',
-              priority: h.priority || 'medium',
-              icon: h.icon || 'target',
-              customImage: h.custom_image || undefined,
-              visualType: (h.visual_type as 'icon' | 'image' | 'symbol') || 'icon',
-              scheduleDays: h.schedule_days || [0, 1, 2, 3, 4, 5, 6],
-              scheduleType: (h.schedule_type as 'daily' | 'weekdays' | 'weekends' | 'custom') || 'daily',
-              reminderEnabled: h.reminder_enabled ?? false,
-              reminderTime: h.reminder_time || '08:00',
-              targetTime: h.target_time || 'Morning',
-              focusMinutesPerSession: h.focus_minutes_per_session || 30,
-              isArchived: h.is_archived ?? false,
-              archivedAt: h.archived_at ? (h.archived_at.split('T')[0] || getTodayYMD()) : undefined,
-              archivedIntervals: Array.isArray(h.archived_intervals) ? h.archived_intervals : [],
-              createdAt: h.created_at ? (h.created_at.split('T')[0] || getTodayYMD()) : getTodayYMD(),
-              history,
-            };
-          });
-
-          setHabits(mapped);
-        }
+        setHabits(mapped);
       } catch (err) {
         console.error('[HabitContext] Failed to load habits from Supabase:', err);
+        setHabits([]);
       }
     };
 
+    fetchSupabaseProfile();
     fetchSupabaseHabits();
   }, [user?.id]);
 
-  // Save to LocalStorage
+  // Save to User-Scoped LocalStorage
   useEffect(() => {
+    const key = getHabitsStorageKey(user?.id);
+    if (!key) return;
     try {
-      localStorage.setItem(HABITS_STORAGE_KEY, JSON.stringify(habits));
+      localStorage.setItem(key, JSON.stringify(habits));
     } catch (e) {
       console.error('Failed to save habits to localStorage', e);
     }
-  }, [habits]);
+  }, [habits, user?.id]);
 
   useEffect(() => {
+    const key = getProfileStorageKey(user?.id);
+    if (!key) return;
     try {
-      localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(userProfile));
+      localStorage.setItem(key, JSON.stringify(userProfile));
     } catch (e) {
       console.error('Failed to save profile to localStorage', e);
     }
-  }, [userProfile]);
+  }, [userProfile, user?.id]);
 
-  // Schedule 10-Minute Advance Reminders for all active configured habits
+  // Schedule Reminders for active habits when habits change
   useEffect(() => {
+    if (!user?.id) return;
     habits.forEach((h) => {
       if (!h.isArchived && h.reminderEnabled && h.reminderTime) {
         scheduleHabitReminder(h.id, h.name, h.reminderTime, 10);
@@ -283,7 +315,7 @@ const generateUUID = (): string => {
         cancelHabitReminder(h.id);
       }
     });
-  }, [habits]);
+  }, [habits, user?.id]);
 
   const activeHabits = useMemo(() => habits.filter(h => !h.isArchived), [habits]);
   const archivedHabits = useMemo(() => habits.filter(h => h.isArchived), [habits]);
@@ -292,6 +324,19 @@ const generateUUID = (): string => {
     if (!selectedHabitId) return null;
     return habits.find(h => h.id === selectedHabitId) || null;
   }, [habits, selectedHabitId]);
+
+  const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+
+  const generateUUID = (): string => {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  };
 
   // Date Navigation
   const nextMonth = () => {
@@ -328,7 +373,6 @@ const generateUUID = (): string => {
   };
 
   // Toggle Habit on a Specific Day (Synced with Supabase habit_logs)
-  // Only today's completions are mutable; past and future dates are read-only.
   const toggleHabitDay = async (habitId: string, dateStr: string) => {
     if (!isToday(dateStr)) {
       console.warn('[HabitContext] Habit completion can only be toggled for today:', dateStr);
@@ -360,7 +404,6 @@ const generateUUID = (): string => {
       try {
         let activeId = habitId;
 
-        // If habit has a non-UUID ID, insert habit to Supabase first to get a valid UUID
         if (!isUUID(activeId)) {
           const { data: insertedHabit, error: insertErr } = await supabase.from('habits').insert({
             user_id: user.id,
@@ -423,7 +466,7 @@ const generateUUID = (): string => {
     }
   };
 
-  // Create Habit (Synced with Supabase habits)
+  // Create Habit
   const createHabit = async (habitData: Omit<Habit, 'id' | 'history' | 'isArchived' | 'createdAt'>) => {
     let habitId = generateUUID();
 
@@ -469,7 +512,7 @@ const generateUUID = (): string => {
     setIsCreateModalOpen(false);
   };
 
-  // Update Habit (Synced with Supabase habits)
+  // Update Habit
   const updateHabit = async (habitId: string, habitData: Partial<Habit>) => {
     setHabits(prev =>
       prev.map(h => (h.id === habitId ? { ...h, ...habitData } : h))
@@ -502,7 +545,7 @@ const generateUUID = (): string => {
     }
   };
 
-  // Archive / Unarchive / Delete (Synced with Supabase habits)
+  // Archive / Unarchive / Delete
   const archiveHabit = async (habitId: string) => {
     setHabits(prev =>
       prev.map(h => (h.id === habitId ? { ...h, isArchived: true } : h))
@@ -544,7 +587,6 @@ const generateUUID = (): string => {
           title: updated.title,
           avatar_url: updated.avatarUrl,
           creed: updated.creed,
-          discipline_score: updated.disciplineScore,
           updated_at: new Date().toISOString(),
         }).then(({ error }) => {
           if (error) console.error('Failed to persist profile to Supabase:', error);
@@ -555,10 +597,14 @@ const generateUUID = (): string => {
   };
 
   const resetToDefaults = () => {
-    setHabits(INITIAL_HABITS);
+    setHabits([]);
     setUserProfile(INITIAL_USER_PROFILE);
-    localStorage.removeItem(HABITS_STORAGE_KEY);
-    localStorage.removeItem(PROFILE_STORAGE_KEY);
+    if (user?.id) {
+      const hKey = getHabitsStorageKey(user.id);
+      const pKey = getProfileStorageKey(user.id);
+      if (hKey) localStorage.removeItem(hKey);
+      if (pKey) localStorage.removeItem(pKey);
+    }
     goToToday();
   };
 
@@ -588,13 +634,11 @@ const generateUUID = (): string => {
     }
 
     // Calculate total completed sessions and real streaks across all history
-    const datesWithCompletions = new Set<string>();
     let totalSessions = 0;
 
     habits.forEach(h => {
-      Object.entries(h.history).forEach(([dateStr, completed]) => {
+      Object.entries(h.history).forEach(([, completed]) => {
         if (completed) {
-          datesWithCompletions.add(dateStr);
           totalSessions++;
         }
       });
@@ -651,7 +695,7 @@ const generateUUID = (): string => {
         isProfileModalOpen,
         setIsProfileModalOpen,
         stats,
-        userProfile,
+        userProfile: effectiveUserProfile,
         updateUserProfile,
         resetToDefaults,
       }}

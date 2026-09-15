@@ -212,7 +212,6 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
             title,
             avatar_url: avatarUrl,
             creed,
-            discipline_score: 0,
             updated_at: new Date().toISOString(),
           });
         } catch (err) {
