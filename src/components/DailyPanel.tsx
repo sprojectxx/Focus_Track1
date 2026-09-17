@@ -2,6 +2,7 @@ import React from 'react';
 import { useHabits } from '../context/HabitContext';
 import { HabitVisual } from './HabitVisual';
 import { isToday } from '../utils/date';
+import { isHabitDueOnDate } from '../utils/habitStats';
 
 export const DailyPanel: React.FC = () => {
   const {
@@ -9,6 +10,7 @@ export const DailyPanel: React.FC = () => {
     setIsDailyPanelOpen,
     selectedDateStr,
     activeHabits,
+    habits,
     toggleHabitDay,
   } = useHabits();
 
@@ -26,18 +28,23 @@ export const DailyPanel: React.FC = () => {
   const formattedDayNumber = dayStr;
   const isSelectedToday = isToday(selectedDateStr);
 
+  // Relevant habits for selected date: active habits for today, or all habits due/completed on historical dates
+  const displayedHabits = isSelectedToday
+    ? activeHabits
+    : habits.filter((h) => !!h.history[selectedDateStr] || isHabitDueOnDate(h, selectedDateStr));
+
   // Calculate day metrics
   let completedHabits = 0;
   let totalFocusMinutes = 0;
 
-  activeHabits.forEach((h) => {
+  displayedHabits.forEach((h) => {
     if (h.history[selectedDateStr]) {
       completedHabits++;
       totalFocusMinutes += h.focusMinutesPerSession;
     }
   });
 
-  const totalPossible = activeHabits.length;
+  const totalPossible = displayedHabits.length;
   const dayScore = totalPossible > 0 ? Math.round((completedHabits / totalPossible) * 100) : 0;
 
   const focusHours = Math.floor(totalFocusMinutes / 60);
@@ -87,7 +94,7 @@ export const DailyPanel: React.FC = () => {
               Habit Execution
             </h3>
             <div className="space-y-2.5">
-              {activeHabits.map((habit) => {
+              {displayedHabits.map((habit) => {
                 const isChecked = !!habit.history[selectedDateStr];
 
                 return (

@@ -13,7 +13,7 @@ import {
   setHabitArchivedInSupabase,
   deleteHabitFromSupabase,
 } from '../lib/habitService';
-import { syncWidgetData } from '../widget/widgetDataSync';
+import { syncWidgetData, clearWidgetData } from '../widget/widgetDataSync';
 
 interface HabitContextType {
   habits: Habit[];
@@ -100,6 +100,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setHabits([]);
         setError(null);
         syncHabitReminders([]).catch(() => {});
+        clearWidgetData().catch(() => {});
       } else if (event === 'SIGNED_IN' && session?.user && isMounted) {
         setHabits([]);
         setError(null);
@@ -117,11 +118,15 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const archivedHabits = useMemo(() => habits.filter((h) => h.isArchived), [habits]);
 
   useEffect(() => {
-    if (habits.length > 0) {
-      syncWidgetData(habits, timeZone).catch((err) => {
-        console.warn('[HabitContext] Widget sync failed:', err);
-      });
-    }
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user?.id) {
+        syncWidgetData(habits, timeZone, user.id).catch((err) => {
+          console.warn('[HabitContext] Widget sync failed:', err);
+        });
+      } else {
+        clearWidgetData().catch(() => {});
+      }
+    });
   }, [habits, timeZone]);
 
   const toggleTodayHabit = async (habitId: string) => {

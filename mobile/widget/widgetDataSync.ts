@@ -6,7 +6,9 @@ import { getMonthlyConsistencyMatrix } from '../utils/habitStats';
 import { getTodayYMD, getDeviceTimeZone } from '../utils/date';
 import { MonthlyWidget } from './MonthlyWidget';
 
-export const WIDGET_STORAGE_KEY = '@focustrack/widget_habits';
+export function getWidgetStorageKey(userId?: string): string {
+  return userId ? `@focustrack/widget_habits_${userId}` : '@focustrack/widget_habits_anon';
+}
 
 export interface WidgetCacheData {
   habits: Habit[];
@@ -14,14 +16,19 @@ export interface WidgetCacheData {
   updatedAt: number;
 }
 
-export async function syncWidgetData(habits: Habit[], timeZone: string = getDeviceTimeZone()) {
+export async function syncWidgetData(
+  habits: Habit[],
+  timeZone: string = getDeviceTimeZone(),
+  userId?: string
+) {
   try {
+    const storageKey = getWidgetStorageKey(userId);
     const payload: WidgetCacheData = {
       habits,
       timeZone,
       updatedAt: Date.now(),
     };
-    await AsyncStorage.setItem(WIDGET_STORAGE_KEY, JSON.stringify(payload));
+    await AsyncStorage.setItem(storageKey, JSON.stringify(payload));
 
     const todayYMD = getTodayYMD(timeZone);
     const parts = todayYMD.split('-').map(Number);
@@ -45,9 +52,20 @@ export async function syncWidgetData(habits: Habit[], timeZone: string = getDevi
   }
 }
 
-export async function loadWidgetData(): Promise<{ habits: Habit[]; timeZone: string }> {
+export async function clearWidgetData(userId?: string): Promise<void> {
   try {
-    const raw = await AsyncStorage.getItem(WIDGET_STORAGE_KEY);
+    const storageKey = getWidgetStorageKey(userId);
+    await AsyncStorage.removeItem(storageKey);
+    await syncWidgetData([], getDeviceTimeZone(), userId);
+  } catch (err) {
+    console.warn('Failed to clear widget data:', err);
+  }
+}
+
+export async function loadWidgetData(userId?: string): Promise<{ habits: Habit[]; timeZone: string }> {
+  try {
+    const storageKey = getWidgetStorageKey(userId);
+    const raw = await AsyncStorage.getItem(storageKey);
     if (raw) {
       const parsed: WidgetCacheData = JSON.parse(raw);
       return {

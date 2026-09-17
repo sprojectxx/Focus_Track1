@@ -212,6 +212,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
             title,
             avatar_url: avatarUrl,
             creed,
+            onboarding_completed: true,
             updated_at: new Date().toISOString(),
           });
         } catch (err) {
@@ -591,7 +592,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
 
       {/* Mobile Footer Note */}
       <div className="max-w-2xl mx-auto w-full text-center pb-2 pt-4 text-[10px] font-technical text-slate-500 uppercase tracking-widest">
-        <span>MOBILE & CAPACITOR OPTIMIZED • TOUCH RESPONSE ENABLED</span>
+        <span>MOBILE & WEB OPTIMIZED • TOUCH RESPONSE ENABLED</span>
       </div>
     </div>
   );

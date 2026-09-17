@@ -55,12 +55,11 @@ const AppContent: React.FC = () => {
         try {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('id, name, creed')
+            .select('id, name, creed, onboarding_completed')
             .eq('id', user.id)
             .maybeSingle();
 
-          if (profile && profile.name) {
-            // Existing authenticated account in Supabase database!
+          if (profile && profile.onboarding_completed === true) {
             localStorage.setItem(`focustrack_onboarded_${user.id}`, 'true');
             if (isMounted) {
               setIsOnboarded(true);

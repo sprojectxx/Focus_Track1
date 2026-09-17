@@ -68,12 +68,12 @@ const HabitContext = createContext<HabitContextType | undefined>(undefined);
 const HABITS_STORAGE_PREFIX = 'focustrack_habits_v1_';
 const PROFILE_STORAGE_PREFIX = 'focustrack_profile_v1_';
 
-function getHabitsStorageKey(userId?: string | null): string | null {
+export function getHabitsStorageKey(userId?: string | null): string | null {
   if (!userId) return null;
   return `${HABITS_STORAGE_PREFIX}${userId}`;
 }
 
-function getProfileStorageKey(userId?: string | null): string | null {
+export function getProfileStorageKey(userId?: string | null): string | null {
   if (!userId) return null;
   return `${PROFILE_STORAGE_PREFIX}${userId}`;
 }
@@ -310,7 +310,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (!user?.id) return;
     habits.forEach((h) => {
       if (!h.isArchived && h.reminderEnabled && h.reminderTime) {
-        scheduleHabitReminder(h.id, h.name, h.reminderTime, 10);
+        scheduleHabitReminder(h.id, h.name, h.reminderTime, h.scheduleDays, h.isArchived, h.reminderEnabled, 10);
       } else {
         cancelHabitReminder(h.id);
       }
@@ -399,76 +399,60 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       })
     );
 
-    // 2. Sync with Supabase
+    // 2. Sync with Supabase with strict rollback on failure
     if (isSupabaseConfigured && user?.id) {
       try {
-        let activeId = habitId;
-
-        if (!isUUID(activeId)) {
-          const { data: insertedHabit, error: insertErr } = await supabase.from('habits').insert({
-            user_id: user.id,
-            name: targetHabit.name,
-            category: targetHabit.category,
-            category_label: targetHabit.categoryLabel || targetHabit.category,
-            description: targetHabit.description || '',
-            priority: targetHabit.priority || 'medium',
-            icon: targetHabit.icon || 'target',
-            custom_image: targetHabit.customImage || null,
-            visual_type: targetHabit.visualType || 'icon',
-            schedule_days: targetHabit.scheduleDays || [0, 1, 2, 3, 4, 5, 6],
-            schedule_type: targetHabit.scheduleType || 'daily',
-            reminder_enabled: targetHabit.reminderEnabled || false,
-            reminder_time: targetHabit.reminderTime || '08:00',
-            target_time: targetHabit.targetTime || 'Morning',
-            focus_minutes_per_session: targetHabit.focusMinutesPerSession || 30,
-            is_archived: false,
-            created_at: new Date().toISOString(),
-          }).select().single();
-
-          if (insertedHabit && !insertErr) {
-            activeId = insertedHabit.id;
-            setHabits(prev =>
-              prev.map(h => (h.id === habitId ? { ...h, id: activeId } : h))
-            );
-          }
+        if (!isUUID(habitId)) {
+          throw new Error('Cannot mutate habit log: invalid habit UUID.');
         }
 
-        if (isUUID(activeId)) {
-          if (newVal) {
-            const { error: upsertErr } = await supabase.from('habit_logs').upsert(
-              {
-                habit_id: activeId,
-                user_id: user.id,
-                completed_date: dateStr,
-                completed: true,
-              },
-              { onConflict: 'habit_id,completed_date' }
-            );
-
-            if (upsertErr) {
-              console.error('[HabitContext] Upsert log error:', upsertErr);
-            }
-          } else {
-            const { error: delErr } = await supabase.from('habit_logs').delete().match({
-              habit_id: activeId,
+        if (newVal) {
+          const { error: upsertErr } = await supabase.from('habit_logs').upsert(
+            {
+              habit_id: habitId,
               user_id: user.id,
               completed_date: dateStr,
-            });
+              completed: true,
+            },
+            { onConflict: 'habit_id,completed_date' }
+          );
 
-            if (delErr) {
-              console.error('[HabitContext] Delete log error:', delErr);
-            }
+          if (upsertErr) {
+            console.error('[HabitContext] Upsert log error:', upsertErr);
+            // Rollback optimistic state
+            setHabits(prev =>
+              prev.map(h => h.id === habitId ? { ...h, history: { ...h.history, [dateStr]: currentVal } } : h)
+            );
+            alert(`Failed to save habit completion: ${upsertErr.message}`);
+          }
+        } else {
+          const { error: delErr } = await supabase.from('habit_logs').delete().match({
+            habit_id: habitId,
+            user_id: user.id,
+            completed_date: dateStr,
+          });
+
+          if (delErr) {
+            console.error('[HabitContext] Delete log error:', delErr);
+            // Rollback optimistic state
+            setHabits(prev =>
+              prev.map(h => h.id === habitId ? { ...h, history: { ...h.history, [dateStr]: currentVal } } : h)
+            );
+            alert(`Failed to remove habit completion: ${delErr.message}`);
           }
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('[HabitContext] Sync habit log error:', err);
+        setHabits(prev =>
+          prev.map(h => h.id === habitId ? { ...h, history: { ...h.history, [dateStr]: currentVal } } : h)
+        );
       }
     }
   };
 
-  // Create Habit
+  // Create Habit (Server-First Creation — No Phantom Habits!)
   const createHabit = async (habitData: Omit<Habit, 'id' | 'history' | 'isArchived' | 'createdAt'>) => {
-    let habitId = generateUUID();
+    let newHabit: Habit;
 
     if (isSupabaseConfigured && user?.id) {
       try {
@@ -477,48 +461,70 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           name: habitData.name,
           category: habitData.category,
           category_label: habitData.categoryLabel || habitData.category,
-          description: habitData.description,
-          priority: habitData.priority,
-          icon: habitData.icon,
-          custom_image: habitData.customImage,
+          description: habitData.description || '',
+          priority: habitData.priority || 'medium',
+          icon: habitData.icon || 'target',
+          custom_image: habitData.customImage || null,
           visual_type: habitData.visualType || 'icon',
-          schedule_days: habitData.scheduleDays,
+          schedule_days: habitData.scheduleDays || [0, 1, 2, 3, 4, 5, 6],
           schedule_type: habitData.scheduleType || 'daily',
-          reminder_enabled: habitData.reminderEnabled,
-          reminder_time: habitData.reminderTime,
-          target_time: habitData.targetTime,
-          focus_minutes_per_session: habitData.focusMinutesPerSession,
+          reminder_enabled: habitData.reminderEnabled ?? false,
+          reminder_time: habitData.reminderTime || '08:00',
+          target_time: habitData.targetTime || 'Morning',
+          focus_minutes_per_session: habitData.focusMinutesPerSession || 30,
           is_archived: false,
           created_at: new Date().toISOString(),
         }).select().single();
 
-        if (data && !error) {
-          habitId = data.id;
+        if (error || !data) {
+          console.error('Failed to create habit in Supabase:', error);
+          alert(`Failed to create habit: ${error?.message || 'Database insert error'}`);
+          return; // Do NOT add phantom habit to local state!
         }
-      } catch (err) {
-        console.error('Failed to create habit in Supabase:', err);
-      }
-    }
 
-    const newHabit: Habit = {
-      ...habitData,
-      id: habitId,
-      history: {},
-      isArchived: false,
-      createdAt: getTodayYMD(),
-    };
+        newHabit = {
+          id: data.id,
+          name: data.name,
+          category: data.category,
+          categoryLabel: data.category_label,
+          description: data.description,
+          priority: data.priority,
+          icon: data.icon,
+          customImage: data.custom_image,
+          visualType: data.visual_type,
+          scheduleDays: data.schedule_days,
+          scheduleType: data.schedule_type,
+          reminderEnabled: data.reminder_enabled,
+          reminderTime: data.reminder_time,
+          targetTime: data.target_time,
+          focusMinutesPerSession: data.focus_minutes_per_session,
+          isArchived: false,
+          createdAt: data.created_at ? data.created_at.split('T')[0] : getTodayYMD(),
+          history: {},
+        };
+      } catch (err: any) {
+        console.error('Failed to create habit in Supabase:', err);
+        alert(`Failed to create habit: ${err.message || 'Network error'}`);
+        return;
+      }
+    } else {
+      newHabit = {
+        ...habitData,
+        id: generateUUID(),
+        history: {},
+        isArchived: false,
+        createdAt: getTodayYMD(),
+      };
+    }
 
     setHabits(prev => [newHabit, ...prev]);
     setIsCreateModalOpen(false);
   };
 
-  // Update Habit
+  // Update Habit (Server-First Update with Rollback)
   const updateHabit = async (habitId: string, habitData: Partial<Habit>) => {
-    setHabits(prev =>
-      prev.map(h => (h.id === habitId ? { ...h, ...habitData } : h))
-    );
-    setEditingHabit(null);
-    setIsCreateModalOpen(false);
+    const previousHabit = habits.find(h => h.id === habitId);
+    if (!previousHabit) return;
 
     if (isSupabaseConfigured && user?.id) {
       try {
@@ -538,65 +544,141 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (habitData.targetTime !== undefined) payload.target_time = habitData.targetTime;
         if (habitData.focusMinutesPerSession !== undefined) payload.focus_minutes_per_session = habitData.focusMinutesPerSession;
 
-        await supabase.from('habits').update(payload).eq('id', habitId);
-      } catch (err) {
+        const { data, error } = await supabase.from('habits').update(payload).match({ id: habitId, user_id: user.id }).select();
+        if (error || !data || data.length === 0) {
+          throw error || new Error('Habit not found or update returned 0 affected rows.');
+        }
+      } catch (err: any) {
         console.error('Failed to update habit in Supabase:', err);
+        alert(`Failed to update habit: ${err.message || 'Database error'}`);
+        return;
       }
     }
+
+    setHabits(prev => prev.map(h => (h.id === habitId ? { ...h, ...habitData } : h)));
+    setEditingHabit(null);
+    setIsCreateModalOpen(false);
   };
 
-  // Archive / Unarchive / Delete
+  // Archive / Unarchive / Delete (Canonical Interval Tracking & Server-First Rollbacks)
   const archiveHabit = async (habitId: string) => {
+    const target = habits.find(h => h.id === habitId);
+    if (!target) return;
+
+    const todayYMD = getTodayYMD();
+    const isoNow = new Date().toISOString();
+
+    if (isSupabaseConfigured && user?.id) {
+      try {
+        const { data, error } = await supabase.from('habits').update({
+          is_archived: true,
+          archived_at: isoNow,
+        }).match({ id: habitId, user_id: user.id }).select();
+
+        if (error || !data || data.length === 0) {
+          throw error || new Error('Failed to archive habit in database.');
+        }
+      } catch (err: any) {
+        console.error('[HabitContext] Archive error:', err);
+        alert(`Failed to archive habit: ${err.message || 'Database error'}`);
+        return;
+      }
+    }
+
+    await cancelHabitReminder(habitId);
     setHabits(prev =>
-      prev.map(h => (h.id === habitId ? { ...h, isArchived: true } : h))
+      prev.map(h => (h.id === habitId ? { ...h, isArchived: true, archivedAt: todayYMD } : h))
     );
     if (selectedHabitId === habitId) {
       setSelectedHabitId(null);
-    }
-    if (isSupabaseConfigured && user?.id) {
-      await supabase.from('habits').update({ is_archived: true }).eq('id', habitId);
     }
   };
 
   const unarchiveHabit = async (habitId: string) => {
-    setHabits(prev =>
-      prev.map(h => (h.id === habitId ? { ...h, isArchived: false } : h))
-    );
+    const target = habits.find(h => h.id === habitId);
+    if (!target) return;
+
+    const todayYMD = getTodayYMD();
+    const previousArchivedAt = target.archivedAt || todayYMD;
+    const closedInterval = { archivedAt: previousArchivedAt, restoredAt: todayYMD };
+    const newArchivedIntervals = [...(target.archivedIntervals || []), closedInterval];
+
     if (isSupabaseConfigured && user?.id) {
-      await supabase.from('habits').update({ is_archived: false }).eq('id', habitId);
+      try {
+        const { data, error } = await supabase.from('habits').update({
+          is_archived: false,
+          archived_at: null,
+          archived_intervals: newArchivedIntervals,
+        }).match({ id: habitId, user_id: user.id }).select();
+
+        if (error || !data || data.length === 0) {
+          throw error || new Error('Failed to restore habit in database.');
+        }
+      } catch (err: any) {
+        console.error('[HabitContext] Restore error:', err);
+        alert(`Failed to restore habit: ${err.message || 'Database error'}`);
+        return;
+      }
     }
+
+    setHabits(prev =>
+      prev.map(h =>
+        h.id === habitId
+          ? { ...h, isArchived: false, archivedAt: undefined, archivedIntervals: newArchivedIntervals }
+          : h
+      )
+    );
   };
 
   const deleteHabit = async (habitId: string) => {
+    const previousHabits = [...habits];
+    await cancelHabitReminder(habitId);
+
+    if (isSupabaseConfigured && user?.id) {
+      try {
+        const { data, error } = await supabase.from('habits').delete().match({ id: habitId, user_id: user.id }).select();
+        if (error) {
+          throw error;
+        }
+      } catch (err: any) {
+        console.error('[HabitContext] Delete habit error:', err);
+        alert(`Failed to delete habit: ${err.message || 'Database error'}`);
+        setHabits(previousHabits);
+        return;
+      }
+    }
+
     setHabits(prev => prev.filter(h => h.id !== habitId));
     if (selectedHabitId === habitId) {
       setSelectedHabitId(null);
     }
-    if (isSupabaseConfigured && user?.id) {
-      await supabase.from('habits').delete().eq('id', habitId);
-    }
   };
 
   const updateUserProfile = (profile: Partial<UserProfile>) => {
-    setUserProfile(prev => {
-      const updated = { ...prev, ...profile };
-      if (isSupabaseConfigured && user?.id) {
-        supabase.from('profiles').upsert({
-          id: user.id,
-          name: updated.name,
-          title: updated.title,
-          avatar_url: updated.avatarUrl,
-          creed: updated.creed,
-          updated_at: new Date().toISOString(),
-        }).then(({ error }) => {
-          if (error) console.error('Failed to persist profile to Supabase:', error);
-        });
-      }
-      return updated;
-    });
+    const previousProfile = { ...userProfile };
+    const updated = { ...userProfile, ...profile };
+    setUserProfile(updated);
+
+    if (isSupabaseConfigured && user?.id) {
+      supabase.from('profiles').upsert({
+        id: user.id,
+        name: updated.name,
+        title: updated.title,
+        avatar_url: updated.avatarUrl,
+        creed: updated.creed,
+        updated_at: new Date().toISOString(),
+      }).then(({ error }) => {
+        if (error) {
+          console.error('Failed to persist profile to Supabase:', error);
+          alert(`Failed to update profile: ${error.message}`);
+          setUserProfile(previousProfile);
+        }
+      });
+    }
   };
 
   const resetToDefaults = () => {
+    cancelAllWebReminders();
     setHabits([]);
     setUserProfile(INITIAL_USER_PROFILE);
     if (user?.id) {

@@ -4,6 +4,7 @@ import { HabitVisual } from './HabitVisual';
 import { getTimeBasedGreeting, getRandomQuote, MotivationalQuote } from '../data/motivationalQuotes';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import { getDaysInMonth, getElapsedDaysInMonth, isToday, isPast, isFuture } from '../utils/date';
+import { isHabitDueOnDate } from '../utils/habitStats';
 
 export const DashboardView: React.FC = () => {
   const {
@@ -70,7 +71,7 @@ export const DashboardView: React.FC = () => {
   const todayKey = `${realYear}-${realMonth.toString().padStart(2, '0')}-${realDay.toString().padStart(2, '0')}`;
 
   const todayCompletedCount = useMemo(() => {
-    return activeHabits.filter(h => !!h.history[todayKey]).length;
+    return activeHabits.filter(h => isHabitDueOnDate(h, todayKey, todayKey) && !!h.history[todayKey]).length;
   }, [activeHabits, todayKey]);
 
   // Day of week labels for current month

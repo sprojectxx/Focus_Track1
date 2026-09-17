@@ -1,7 +1,5 @@
 import React, { createContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { Capacitor } from '@capacitor/core';
-import { App as CapacitorApp } from '@capacitor/app';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import { syncUserTimeZone } from '../lib/profileService';
 
@@ -57,46 +55,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
     });
 
-    let appUrlListener: any = null;
-    if (Capacitor.isNativePlatform()) {
-      appUrlListener = CapacitorApp.addListener('appUrlOpen', async ({ url }) => {
-        if (url && (url.includes('com.focustrack.app') || url.includes('auth/callback'))) {
-          try {
-            const parsedUrl = new URL(url.replace('#', '?'));
-            const code = parsedUrl.searchParams.get('code');
-            if (code) {
-              const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-              if (data?.session) {
-                setSession(data.session);
-                setUser(data.session.user);
-                await syncUserTimeZone(data.session.user.id);
-              } else if (error) console.error('[OAuth DeepLink] Code exchange error:', error.message);
-            } else {
-              const { data: { session: currentSession } } = await supabase.auth.getSession();
-              if (currentSession) {
-                setSession(currentSession);
-                setUser(currentSession.user);
-                await syncUserTimeZone(currentSession.user.id);
-              }
-            }
-          } catch (err) {
-            console.error('[OAuth DeepLink] Failed to parse callback URL:', err);
-          } finally {
-            setLoading(false);
-          }
-        }
-      });
-    }
-
     return () => {
       subscription.unsubscribe();
-      if (appUrlListener && typeof appUrlListener.remove === 'function') appUrlListener.remove();
     };
   }, []);
 
   const signInWithGoogle = async () => {
     if (!isSupabaseConfigured) { demoLogin(); return; }
-    const redirectUrl = Capacitor.isNativePlatform() ? CANONICAL_ANDROID_REDIRECT : `${window.location.origin}`;
+    const redirectUrl = window.location.origin;
     const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: redirectUrl, skipBrowserRedirect: false } });
     if (error) {
       console.error('Google Sign-In Error:', error.message);

@@ -1,14 +1,20 @@
-import { PushNotifications, PermissionStatus } from '@capacitor/push-notifications';
-import { LocalNotifications } from '@capacitor/local-notifications';
-import { Capacitor } from '@capacitor/core';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 
 export interface NotificationService {
   isNative: boolean;
   initPushNotifications: (userId: string) => Promise<string | null>;
   requestWebNotificationPermission: () => Promise<boolean>;
-  scheduleHabitReminder: (habitId: string, habitName: string, timeStr: string, advanceMinutes?: number) => Promise<void>;
+  scheduleHabitReminder: (
+    habitId: string,
+    habitName: string,
+    timeStr: string,
+    scheduleDays?: number[],
+    isArchived?: boolean,
+    reminderEnabled?: boolean,
+    advanceMinutes?: number
+  ) => Promise<void>;
   cancelHabitReminder: (habitId: string) => Promise<void>;
+  cancelAllWebReminders: () => void;
 }
 
 export const firebaseConfig = {
@@ -26,12 +32,21 @@ export const firebaseConfig = {
 const activeWebNotificationTimers: Map<string, number[]> = new Map();
 
 /**
+ * Cancel all active web notification timers (used during logout / account switch)
+ */
+export const cancelAllWebReminders = (): void => {
+  activeWebNotificationTimers.forEach((timers) => {
+    timers.forEach((tId) => clearTimeout(tId));
+  });
+  activeWebNotificationTimers.clear();
+  console.log('[WebNotification] Cancelled all active web notification timers.');
+};
+
+/**
  * Initialize Web Browser Notifications (for Web Application)
  */
 export const requestWebNotificationPermission = async (): Promise<boolean> => {
-  if (Capacitor.isNativePlatform()) return false;
-
-  if (!('Notification' in window)) {
+  if (typeof window === 'undefined' || !('Notification' in window)) {
     console.log('[WebNotification] Browser does not support web notifications.');
     return false;
   }
@@ -49,90 +64,26 @@ export const requestWebNotificationPermission = async (): Promise<boolean> => {
 };
 
 /**
- * Initialize Firebase Cloud Messaging (FCM) & Push Notifications (for Mobile Application)
+ * Initialize Web Notifications
  */
-export const initPushNotifications = async (userId: string): Promise<string | null> => {
-  // Also request web notifications for web browsers
-  if (!Capacitor.isNativePlatform()) {
-    await requestWebNotificationPermission();
-    return null;
-  }
-
-  try {
-    let permStatus: PermissionStatus = await PushNotifications.checkPermissions();
-
-    if (permStatus.receive === 'prompt') {
-      permStatus = await PushNotifications.requestPermissions();
-    }
-
-    if (permStatus.receive !== 'granted') {
-      console.warn('[PushNotifications] Permission not granted for push notifications.');
-      return null;
-    }
-
-    // Register with Firebase Cloud Messaging (FCM) / Apple Push Service
-    await PushNotifications.register();
-
-    return new Promise((resolve) => {
-      PushNotifications.addListener('registration', async (token) => {
-        console.log('[FCM Push Token Generated]:', token.value);
-
-        // Save FCM token to Supabase for backend push server targeting
-        if (isSupabaseConfigured && userId) {
-          try {
-            await supabase.from('user_fcm_tokens').upsert(
-              {
-                user_id: userId,
-                token: token.value,
-                platform: Capacitor.getPlatform(),
-                updated_at: new Date().toISOString(),
-              },
-              { onConflict: 'user_id,token' }
-            );
-          } catch (err) {
-            console.error('[FCM Token Storage Error]:', err);
-          }
-        }
-
-        resolve(token.value);
-      });
-
-      PushNotifications.addListener('registrationError', (err) => {
-        console.error('[FCM Registration Error]:', err);
-        resolve(null);
-      });
-
-      PushNotifications.addListener('pushNotificationReceived', (notification) => {
-        console.log('[FCM Push Notification Received]:', notification);
-      });
-
-      PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
-        console.log('[FCM Notification Action Tapped]:', notification.actionId, notification.notification);
-      });
-    });
-  } catch (error) {
-    console.error('[Push Notifications Init Error]:', error);
-    return null;
-  }
+export const initPushNotifications = async (_userId: string): Promise<string | null> => {
+  await requestWebNotificationPermission();
+  return null;
 };
 
 /**
  * Helper to calculate 10-minute advance time string & Date
- * Example: '08:00' -> '07:50'
  */
 export const getAdvanceTimeString = (timeStr: string, advanceMinutes = 10): { advanceTimeStr: string; scheduledDate: Date; advanceDate: Date } => {
   const [hours, minutes] = timeStr.split(':').map(Number);
   const now = new Date();
 
-  // Task execution date
   const scheduledDate = new Date();
   scheduledDate.setHours(hours, minutes, 0, 0);
 
-  // 10-minute advance date
   const advanceDate = new Date(scheduledDate.getTime() - advanceMinutes * 60 * 1000);
 
   if (advanceDate <= now) {
-    // If 10-min advance time passed today, schedule for tomorrow
     advanceDate.setDate(advanceDate.getDate() + 1);
     scheduledDate.setDate(scheduledDate.getDate() + 1);
   }
@@ -149,75 +100,41 @@ export const getAdvanceTimeString = (timeStr: string, advanceMinutes = 10): { ad
 
 /**
  * Schedule Habit Reminders (Both 10-Minute Advance Alert & Task Time Alert)
- * Works for Mobile Application (Capacitor/FCM/LocalNotifications) & Web Application (Browser Notifications)
+ * Respects habit scheduleDays, scheduleType, isArchived, and reminderEnabled.
  */
 export const scheduleHabitReminder = async (
   habitId: string,
   habitName: string,
   timeStr: string,
+  scheduleDays: number[] = [0, 1, 2, 3, 4, 5, 6],
+  isArchived = false,
+  reminderEnabled = true,
   advanceMinutes = 10
 ) => {
-  // Cancel previous timers for this habit first
+  // Always cancel previous timers first
   await cancelHabitReminder(habitId);
 
-  const { advanceTimeStr, scheduledDate, advanceDate } = getAdvanceTimeString(timeStr, advanceMinutes);
-
-  // Numeric ID hash for Capacitor LocalNotifications
-  const baseHash = Math.abs(
-    habitId.split('').reduce((acc, char) => (acc << 5) - acc + char.charCodeAt(0), 0)
-  );
-  const advanceNotificationId = baseHash * 10 + 1;
-  const taskNotificationId = baseHash * 10 + 2;
-
-  // 1. MOBILE APPLICATION (Capacitor LocalNotifications & FCM)
-  if (Capacitor.isNativePlatform()) {
-    try {
-      await LocalNotifications.schedule({
-        notifications: [
-          // A) 10-Minute Advance Alert Notification
-          {
-            id: advanceNotificationId,
-            title: `⏰ 10-MIN ALERT: ${habitName}`,
-            body: `Your protocol "${habitName}" starts in 10 minutes (${timeStr}). Prepare for execution!`,
-            schedule: {
-              at: advanceDate,
-              repeats: true,
-              every: 'day',
-            },
-            sound: 'beep.wav',
-            actionTypeId: 'HABIT_ADVANCE_ALERT',
-          },
-          // B) Scheduled Task Execution Notification
-          {
-            id: taskNotificationId,
-            title: `🎯 PROTOCOL START: ${habitName}`,
-            body: `It's ${timeStr}! Time to execute "${habitName}". Tap to mark complete.`,
-            schedule: {
-              at: scheduledDate,
-              repeats: true,
-              every: 'day',
-            },
-            sound: 'beep.wav',
-            actionTypeId: 'HABIT_EXECUTION_ALERT',
-          },
-        ],
-      });
-      console.log(`[Mobile Notification] Scheduled 10-min advance alert (${advanceTimeStr}) & task alert (${timeStr}) for ${habitName}`);
-    } catch (err) {
-      console.error('[Mobile Notification Schedule Error]:', err);
-    }
+  if (isArchived || !reminderEnabled || !timeStr) {
     return;
   }
 
-  // 2. WEB APPLICATION (Browser Notification API & Web Timers)
-  if ('Notification' in window && Notification.permission === 'granted') {
+  const { advanceTimeStr, scheduledDate, advanceDate } = getAdvanceTimeString(timeStr, advanceMinutes);
+
+  // Validate that the target date is a scheduled day (0=Mon, ..., 6=Sun)
+  const scheduledDayIndex = (scheduledDate.getDay() + 6) % 7;
+  if (!scheduleDays.includes(scheduledDayIndex)) {
+    console.log(`[Notification] Skipping schedule for ${habitName} on non-scheduled day index ${scheduledDayIndex}`);
+    return;
+  }
+
+  // WEB APPLICATION (Browser Notification API & Web Timers)
+  if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
     const nowMs = Date.now();
     const advanceMs = advanceDate.getTime() - nowMs;
     const taskMs = scheduledDate.getTime() - nowMs;
 
     const timerIds: number[] = [];
 
-    // Schedule 10-Minute Advance Web Notification
     if (advanceMs > 0) {
       const advTimer = window.setTimeout(() => {
         new Notification(`⏰ 10-MIN ALERT: ${habitName}`, {
@@ -228,7 +145,6 @@ export const scheduleHabitReminder = async (
       timerIds.push(advTimer);
     }
 
-    // Schedule Task Start Web Notification
     if (taskMs > 0) {
       const taskTimer = window.setTimeout(() => {
         new Notification(`🎯 PROTOCOL START: ${habitName}`, {
@@ -248,26 +164,6 @@ export const scheduleHabitReminder = async (
  * Cancel Habit Reminders
  */
 export const cancelHabitReminder = async (habitId: string) => {
-  const baseHash = Math.abs(
-    habitId.split('').reduce((acc, char) => (acc << 5) - acc + char.charCodeAt(0), 0)
-  );
-  const advanceNotificationId = baseHash * 10 + 1;
-  const taskNotificationId = baseHash * 10 + 2;
-
-  if (Capacitor.isNativePlatform()) {
-    try {
-      await LocalNotifications.cancel({
-        notifications: [
-          { id: advanceNotificationId },
-          { id: taskNotificationId },
-        ],
-      });
-    } catch {
-      // ignore
-    }
-  }
-
-  // Cancel Web timers
   const timers = activeWebNotificationTimers.get(habitId);
   if (timers) {
     timers.forEach((tId) => clearTimeout(tId));

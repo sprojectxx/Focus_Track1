@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "FocusTrack",
-    "slug": "focustrack",
+    "slug": "brutual",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -47,7 +47,10 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.focustrack.app"
+      "bundleIdentifier": "com.focustrack.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.focustrack.app",
@@ -62,9 +65,9 @@
     },
     "extra": {
       "eas": {
-        "projectId": "61ad6c6b-a653-49cf-9a55-4bb618b6c8e9"
+        "projectId": "9654567f-bbdd-4961-8443-058a183de424"
       }
     },
-    "owner": "stevason"
+    "owner": "brutuals-team"
   }
 }

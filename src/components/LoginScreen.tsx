@@ -151,13 +151,15 @@ export const LoginScreen: React.FC = () => {
             )}
           </button>
 
-          {/* Quick Demo Preview Option */}
-          <button
-            onClick={() => demoLogin()}
-            className="w-full h-10 bg-[#1e1e1e] hover:bg-[#282828] text-slate-300 font-technical text-xs uppercase tracking-widest rounded-xl border border-[#333] transition-colors cursor-pointer"
-          >
-            Instant Demo Access
-          </button>
+          {/* Quick Demo Preview Option (development/offline fallback only) */}
+          {!isSupabaseConfigured && (
+            <button
+              onClick={() => demoLogin()}
+              className="w-full h-10 bg-[#1e1e1e] hover:bg-[#282828] text-slate-300 font-technical text-xs uppercase tracking-widest rounded-xl border border-[#333] transition-colors cursor-pointer"
+            >
+              Instant Demo Access
+            </button>
+          )}
         </div>
 
         {/* Heroic Security Footer */}

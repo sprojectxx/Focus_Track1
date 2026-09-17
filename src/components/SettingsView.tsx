@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { useHabits } from '../context/HabitContext';
+import { useHabits, getHabitsStorageKey, getProfileStorageKey } from '../context/HabitContext';
+import { useAuth } from '../context/AuthContext';
 
 export const SettingsView: React.FC = () => {
   const { userProfile, updateUserProfile, resetToDefaults, habits } = useHabits();
+  const { user } = useAuth();
   const [name, setName] = useState(userProfile.name);
   const [title, setTitle] = useState(userProfile.title);
   const [creed, setCreed] = useState(userProfile.creed);
@@ -41,9 +43,13 @@ export const SettingsView: React.FC = () => {
       try {
         const parsed = JSON.parse(event.target?.result as string);
         if (parsed.habits && Array.isArray(parsed.habits)) {
-          localStorage.setItem('focustrack_habits_v1', JSON.stringify(parsed.habits));
-          if (parsed.userProfile) {
-            localStorage.setItem('focustrack_profile_v1', JSON.stringify(parsed.userProfile));
+          const hKey = getHabitsStorageKey(user?.id);
+          const pKey = getProfileStorageKey(user?.id);
+          if (hKey) {
+            localStorage.setItem(hKey, JSON.stringify(parsed.habits));
+          }
+          if (parsed.userProfile && pKey) {
+            localStorage.setItem(pKey, JSON.stringify(parsed.userProfile));
           }
           window.location.reload();
         } else {

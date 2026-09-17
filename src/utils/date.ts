@@ -1,18 +1,65 @@
 /**
- * Date Utility Functions for FocusTrack
+ * Date Utility Functions for FocusTrack (Web & Mobile Parity)
  * Handles local date formatting, comparisons, and month day counts safely
- * without UTC offset drift.
+ * without UTC offset drift, incorporating user's IANA timezone.
  */
 
+export function getDeviceTimeZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  } catch {
+    return 'UTC';
+  }
+}
+
 /**
- * Returns today's date in local 'YYYY-MM-DD' format.
+ * Returns today's date in local 'YYYY-MM-DD' format for given timezone.
  */
-export function getTodayYMD(): string {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+export function getTodayYMD(timeZone: string = getDeviceTimeZone()): string {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    return formatter.format(new Date());
+  } catch {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+}
+
+/**
+ * Converts a TIMESTAMPTZ / ISO timestamp string or Date object into a logical 'YYYY-MM-DD'
+ * in the specified IANA timezone using Intl.DateTimeFormat('en-CA').
+ */
+export function getYMDInTimeZone(
+  timestamp: string | Date,
+  timeZone: string = getDeviceTimeZone()
+): string {
+  try {
+    if (typeof timestamp === 'string') {
+      const trimmed = timestamp.trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+        return trimmed;
+      }
+    }
+    const dateObj = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
+    if (isNaN(dateObj.getTime())) return getTodayYMD(timeZone);
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    return formatter.format(dateObj);
+  } catch {
+    return getTodayYMD(timeZone);
+  }
 }
 
 /**
@@ -39,47 +86,51 @@ export function parseYMD(dateStr: string): { year: number; month: number; day: n
 }
 
 /**
+ * Parses 'YYYY-MM-DD' into a local Date object at midnight (00:00:00 local time).
+ */
+export function parseYMDToLocalDate(dateStr: string): Date | null {
+  const parsed = parseYMD(dateStr);
+  if (!parsed) return null;
+  return new Date(parsed.year, parsed.month - 1, parsed.day);
+}
+
+/**
  * Returns true if dateStr matches today's local 'YYYY-MM-DD'.
  */
-export function isToday(dateStr: string): boolean {
-  return dateStr === getTodayYMD();
+export function isToday(dateStr: string, timeZone: string = getDeviceTimeZone()): boolean {
+  return dateStr === getTodayYMD(timeZone);
 }
 
 /**
  * Returns true if dateStr is strictly before today's local 'YYYY-MM-DD'.
  */
-export function isPast(dateStr: string): boolean {
-  return dateStr < getTodayYMD();
+export function isPast(dateStr: string, timeZone: string = getDeviceTimeZone()): boolean {
+  return dateStr < getTodayYMD(timeZone);
 }
 
 /**
  * Returns true if dateStr is strictly after today's local 'YYYY-MM-DD'.
  */
-export function isFuture(dateStr: string): boolean {
-  return dateStr > getTodayYMD();
+export function isFuture(dateStr: string, timeZone: string = getDeviceTimeZone()): boolean {
+  return dateStr > getTodayYMD(timeZone);
 }
 
 /**
  * Returns the exact number of days in a given year and 1-based month.
- * Automatically handles leap years (e.g. Feb 2024 = 29 days, Feb 2025 = 28 days).
  */
 export function getDaysInMonth(year: number, month: number): number {
-  // Month in JS Date constructor is 0-indexed; month parameter is 1-indexed.
-  // Passing 0 for the day returns the last day of the preceding 0-indexed month (which is our target month).
   return new Date(year, month, 0).getDate();
 }
 
 /**
  * Returns how many days have elapsed up to today for the specified month/year.
- * - For past months: returns all days in that month.
- * - For future months: returns 0.
- * - For current month: returns today's day number (e.g. 5 on Sept 5th).
  */
-export function getElapsedDaysInMonth(year: number, month: number): number {
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth() + 1; // 1-based
-  const currentDay = now.getDate();
+export function getElapsedDaysInMonth(year: number, month: number, timeZone: string = getDeviceTimeZone()): number {
+  const todayStr = getTodayYMD(timeZone);
+  const parsed = parseYMD(todayStr);
+  if (!parsed) return getDaysInMonth(year, month);
+
+  const { year: currentYear, month: currentMonth, day: currentDay } = parsed;
 
   if (year < currentYear || (year === currentYear && month < currentMonth)) {
     return getDaysInMonth(year, month);
